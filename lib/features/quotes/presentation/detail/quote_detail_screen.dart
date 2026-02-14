@@ -873,21 +873,7 @@ class _TopReactionButtonState extends State<_TopReactionButton> {
 
         // Floating reaction bubble menu (vertical stack)
         if (_showBubble) ...[
-          // Backdrop to close
-          Positioned(
-            top: 52,
-            right: 0,
-            child: GestureDetector(
-              onTap: () => setState(() => _showBubble = false),
-              child: Container(
-                width: 200,
-                height: 300,
-                color: Colors.transparent,
-              ),
-            ),
-          ),
-
-          // Menu
+          // Menu (first, so it's on top)
           Positioned(
             top: 52,
             right: 0,
@@ -946,6 +932,18 @@ class _TopReactionButtonState extends State<_TopReactionButton> {
                     ],
                   ],
                 ),
+              ),
+            ),
+          ),
+
+          // Backdrop to close (behind menu)
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () => setState(() => _showBubble = false),
+              child: IgnorePointer(
+                ignoring: true,
+                child: Container(color: Colors.transparent),
               ),
             ),
           ),
