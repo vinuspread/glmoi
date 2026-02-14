@@ -15,4 +15,10 @@ class LikedQuotesController extends StateNotifier<Set<String>> {
     final next = Set<String>.from(state)..add(quoteId);
     state = next;
   }
+
+  void unmarkLiked(String quoteId) {
+    if (!state.contains(quoteId)) return;
+    final next = Set<String>.from(state)..remove(quoteId);
+    state = next;
+  }
 }

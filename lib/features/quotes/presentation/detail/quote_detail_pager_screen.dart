@@ -1,11 +1,7 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/ads/banner_ad_widget.dart';
@@ -82,6 +78,20 @@ class _QuoteDetailPagerScreenState
       setState(() => _actionsVisible = true);
     }
     _scheduleAutoHideActions();
+  }
+
+  void _showReactionAnimation(String assetPath) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+
+    entry = OverlayEntry(
+      builder: (context) => _ReactionAnimationOverlay(
+        assetPath: assetPath,
+        onComplete: () => entry.remove(),
+      ),
+    );
+
+    overlay.insert(entry);
   }
 
   Quote get _current => _quotes[_index];
@@ -224,48 +234,76 @@ class _QuoteDetailPagerScreenState
                         _TopReactionButton(
                           quote: quote,
                           myReaction: myReaction,
-                          onReact: (reaction) async {
-                            final messenger = ScaffoldMessenger.of(context);
+                          onReact: (reaction, assetPath) async {
                             if (!isLoggedIn) {
                               context.push('/login');
                               return;
                             }
-                            try {
-                              final result = await FirebaseFunctions.instance
-                                  .httpsCallable('reactToQuoteOnce')
-                                  .call({
-                                'quoteId': quote.id,
-                                'reaction': reactionTypeToFirestore(reaction),
-                              });
-                              final alreadyReacted =
-                                  result.data['alreadyReacted'] == true;
+
+                            if (myReaction != null) {
                               if (!context.mounted) return;
-                              if (alreadyReacted) {
-                                messenger.showSnackBar(
-                                  const SnackBar(content: Text('이미 반응한 글입니다.')),
-                                );
-                              } else {
-                                // Update local state
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('이미 반응을 남겼어요.'),
+                                ),
+                              );
+                              return;
+                            }
+
+                            _showReactionAnimation(assetPath);
+
+                            // Optimistic UI update
+                            final key = reactionTypeToFirestore(reaction);
+                            final prevCount = quote.reactionCounts[key] ?? 0;
+                            setState(() {
+                              _quotes[_index] = quote.copyWith(
+                                reactionCounts: {
+                                  ...quote.reactionCounts,
+                                  key: prevCount + 1,
+                                },
+                              );
+                            });
+
+                            final messenger = ScaffoldMessenger.of(context);
+                            try {
+                              final (already, _) = await ref
+                                  .read(reactionsRepositoryProvider)
+                                  .reactToQuoteOnce(
+                                    quoteId: quote.id,
+                                    reactionType: reaction,
+                                  );
+                              if (!context.mounted) return;
+                              if (already) {
+                                // Rollback
                                 setState(() {
-                                  final updated = quote.copyWith(
+                                  _quotes[_index] = quote.copyWith(
                                     reactionCounts: {
                                       ...quote.reactionCounts,
-                                      reactionTypeToFirestore(reaction):
-                                          (quote.reactionCounts[
-                                                      reactionTypeToFirestore(
-                                                          reaction)] ??
-                                                  0) +
-                                              1,
+                                      key: prevCount,
                                     },
                                   );
-                                  _quotes[_index] = updated;
                                 });
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('이미 반응을 남겼어요.'),
+                                  ),
+                                );
                               }
                             } catch (e) {
-                              if (!context.mounted) return;
-                              messenger.showSnackBar(
-                                SnackBar(content: Text('반응 실패: $e')),
-                              );
+                              // Rollback on error
+                              if (context.mounted) {
+                                setState(() {
+                                  _quotes[_index] = quote.copyWith(
+                                    reactionCounts: {
+                                      ...quote.reactionCounts,
+                                      key: prevCount,
+                                    },
+                                  );
+                                });
+                                messenger.showSnackBar(
+                                  SnackBar(content: Text('반응 실패: $e')),
+                                );
+                              }
                             }
                           },
                         ),
@@ -374,16 +412,33 @@ class _QuoteDetailPagerScreenState
                               context.push('/login');
                               return;
                             }
+
+                            // Optimistic UI update
+                            ref
+                                .read(likedQuotesProvider.notifier)
+                                .markLiked(quote.id);
+                            setState(() {
+                              _quotes[_index] = quote.copyWith(
+                                likeCount: quote.likeCount + 1,
+                              );
+                            });
+
                             final messenger = ScaffoldMessenger.of(context);
                             try {
                               final alreadyLiked = await ref
                                   .read(_interactionsRepoProvider)
                                   .likeQuoteOnce(quoteId: quote.id);
-                              ref
-                                  .read(likedQuotesProvider.notifier)
-                                  .markLiked(quote.id);
                               if (!context.mounted) return;
                               if (alreadyLiked) {
+                                // Rollback
+                                ref
+                                    .read(likedQuotesProvider.notifier)
+                                    .unmarkLiked(quote.id);
+                                setState(() {
+                                  _quotes[_index] = quote.copyWith(
+                                    likeCount: quote.likeCount - 1,
+                                  );
+                                });
                                 messenger.showSnackBar(
                                   const SnackBar(
                                       content: Text('이미 좋아요한 글입니다.')),
@@ -391,6 +446,15 @@ class _QuoteDetailPagerScreenState
                               }
                             } catch (e) {
                               if (!context.mounted) return;
+                              // Rollback on error
+                              ref
+                                  .read(likedQuotesProvider.notifier)
+                                  .unmarkLiked(quote.id);
+                              setState(() {
+                                _quotes[_index] = quote.copyWith(
+                                  likeCount: quote.likeCount - 1,
+                                );
+                              });
                               messenger.showSnackBar(
                                 SnackBar(content: Text('좋아요 실패: $e')),
                               );
@@ -401,11 +465,15 @@ class _QuoteDetailPagerScreenState
                               context.push('/login');
                               return;
                             }
+
+                            // Optimistic UI update (toggle current state)
+                            final currentlySaved = isSaved;
+                            final controller =
+                                ref.read(savedQuotesControllerProvider);
+
                             final messenger = ScaffoldMessenger.of(context);
                             try {
-                              final saved = await ref
-                                  .read(savedQuotesControllerProvider)
-                                  .toggleSave(quote);
+                              final saved = await controller.toggleSave(quote);
                               if (!context.mounted) return;
                               messenger.showSnackBar(
                                 SnackBar(
@@ -414,6 +482,8 @@ class _QuoteDetailPagerScreenState
                               );
                             } catch (e) {
                               if (!context.mounted) return;
+                              // Rollback on error (toggle back)
+                              await controller.toggleSave(quote);
                               messenger.showSnackBar(
                                 SnackBar(content: Text('담기 실패: $e')),
                               );
@@ -433,6 +503,14 @@ class _QuoteDetailPagerScreenState
                               await KakaoTalkShareService.share(
                                 KakaoTalkShareContent(text: text),
                               );
+
+                              // Optimistic UI update after share
+                              setState(() {
+                                _quotes[_index] = quote.copyWith(
+                                  shareCount: quote.shareCount + 1,
+                                );
+                              });
+
                               await ref
                                   .read(_interactionsRepoProvider)
                                   .incrementShareCount(quoteId: quote.id);
@@ -548,7 +626,7 @@ class _TopPillButton extends StatelessWidget {
 class _TopReactionButton extends StatefulWidget {
   final Quote quote;
   final ReactionType? myReaction;
-  final Future<void> Function(ReactionType reaction) onReact;
+  final Future<void> Function(ReactionType reaction, String assetPath) onReact;
 
   const _TopReactionButton({
     super.key,
@@ -562,111 +640,88 @@ class _TopReactionButton extends StatefulWidget {
 }
 
 class _TopReactionButtonState extends State<_TopReactionButton> {
-  bool _showBubble = false;
-
   static const _items = <(ReactionType type, String label, String asset)>[
-    (ReactionType.comfort, '위로받았어요', 'assets/icons/reactions/comfort.svg'),
-    (ReactionType.empathize, '공감해요', 'assets/icons/reactions/empathize.svg'),
-    (ReactionType.good, '멋진글이예요', 'assets/icons/reactions/good.svg'),
-    (ReactionType.touched, '감동했어요', 'assets/icons/reactions/touched.svg'),
-    (ReactionType.fan, '팬이예요', 'assets/icons/reactions/fan.svg'),
+    (ReactionType.comfort, '위로받았어요', 'assets/icons/reactions/comfort.png'),
+    (ReactionType.empathize, '공감해요', 'assets/icons/reactions/empathize.png'),
+    (ReactionType.good, '멋진글이예요', 'assets/icons/reactions/good.png'),
+    (ReactionType.touched, '감동했어요', 'assets/icons/reactions/touched.png'),
+    (ReactionType.fan, '팬이예요', 'assets/icons/reactions/fan.png'),
   ];
+
+  void _showReactionSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF1A1F2E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0x33FFFFFF),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Text(
+                  '반응 남기기',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const Divider(height: 1, thickness: 1, color: Color(0x1AFFFFFF)),
+              for (int i = 0; i < _items.length; i++) ...[
+                _ReactionBubbleItem(
+                  label: _items[i].$2,
+                  asset: _items[i].$3,
+                  count: widget.quote.reactionCounts[
+                          reactionTypeToFirestore(_items[i].$1)] ??
+                      0,
+                  selected: widget.myReaction == _items[i].$1,
+                  disabled: widget.myReaction != null &&
+                      widget.myReaction != _items[i].$1,
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await widget.onReact(_items[i].$1, _items[i].$3);
+                  },
+                ),
+                if (i < _items.length - 1)
+                  const Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: Color(0x1AFFFFFF),
+                  ),
+              ],
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final totalReactions = widget.quote.reactionCounts.values
         .fold<int>(0, (sum, count) => sum + count);
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        // Main button (top pill style)
-        _TopPillButton(
-          label: '반응 $totalReactions',
-          textColor: widget.myReaction != null ? AppTheme.accent : Colors.white,
-          onPressed: () {
-            setState(() => _showBubble = !_showBubble);
-          },
-        ),
-
-        // Floating reaction bubble menu (vertical stack)
-        if (_showBubble) ...[
-          // Menu (first, so it's on top)
-          Positioned(
-            top: 52,
-            right: 0,
-            child: TweenAnimationBuilder<double>(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
-              tween: Tween(begin: 0.0, end: 1.0),
-              builder: (context, value, child) {
-                return Transform.scale(
-                  scale: value,
-                  alignment: Alignment.topRight,
-                  child: Opacity(
-                    opacity: value,
-                    child: child,
-                  ),
-                );
-              },
-              child: Container(
-                width: 200,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1A1F2E),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0x33FFFFFF)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x66000000),
-                      blurRadius: 24,
-                      offset: Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (int i = 0; i < _items.length; i++) ...[
-                      _ReactionBubbleItem(
-                        label: _items[i].$2,
-                        asset: _items[i].$3,
-                        count: widget.quote.reactionCounts[
-                                reactionTypeToFirestore(_items[i].$1)] ??
-                            0,
-                        selected: widget.myReaction == _items[i].$1,
-                        disabled: widget.myReaction != null &&
-                            widget.myReaction != _items[i].$1,
-                        onTap: () async {
-                          setState(() => _showBubble = false);
-                          await widget.onReact(_items[i].$1);
-                        },
-                      ),
-                      if (i < _items.length - 1)
-                        const Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: Color(0x1AFFFFFF),
-                        ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Backdrop to close (behind menu)
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTap: () => setState(() => _showBubble = false),
-              child: IgnorePointer(
-                ignoring: true,
-                child: Container(color: Colors.transparent),
-              ),
-            ),
-          ),
-        ],
-      ],
+    return _TopPillButton(
+      label: '반응 $totalReactions',
+      textColor: widget.myReaction != null ? AppTheme.accent : Colors.white,
+      onPressed: _showReactionSheet,
     );
   }
 }
@@ -699,14 +754,10 @@ class _ReactionBubbleItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              SvgPicture.asset(
+              Image.asset(
                 asset,
                 width: 24,
                 height: 24,
-                colorFilter: ColorFilter.mode(
-                  selected ? AppTheme.accent : Colors.white,
-                  BlendMode.srcIn,
-                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -729,6 +780,100 @@ class _ReactionBubbleItem extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReactionAnimationOverlay extends StatefulWidget {
+  final String assetPath;
+  final VoidCallback onComplete;
+
+  const _ReactionAnimationOverlay({
+    required this.assetPath,
+    required this.onComplete,
+  });
+
+  @override
+  State<_ReactionAnimationOverlay> createState() =>
+      _ReactionAnimationOverlayState();
+}
+
+class _ReactionAnimationOverlayState extends State<_ReactionAnimationOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 0.0, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 0.9)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 50,
+      ),
+    ]).animate(_controller);
+
+    _opacityAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 0.0, end: 1.0),
+        weight: 30,
+      ),
+      TweenSequenceItem(
+        tween: ConstantTween(1.0),
+        weight: 40,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 0.0),
+        weight: 30,
+      ),
+    ]).animate(_controller);
+
+    _controller.forward().then((_) {
+      widget.onComplete();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Center(
+              child: Opacity(
+                opacity: _opacityAnimation.value,
+                child: Transform.scale(
+                  scale: _scaleAnimation.value,
+                  child: Image.asset(
+                    widget.assetPath,
+                    width: 120,
+                    height: 120,
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

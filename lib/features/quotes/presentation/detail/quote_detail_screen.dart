@@ -281,6 +281,18 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                               return;
                             }
 
+                            // Optimistic UI update
+                            final key = reactionTypeToFirestore(reaction);
+                            final prevCount = _quote.reactionCounts[key] ?? 0;
+                            setState(() {
+                              _quote = _quote.copyWith(
+                                reactionCounts: {
+                                  ..._quote.reactionCounts,
+                                  key: prevCount + 1,
+                                },
+                              );
+                            });
+
                             final messenger = ScaffoldMessenger.of(context);
                             try {
                               final (already, _) = await ref
@@ -291,26 +303,32 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                                   );
                               if (!mounted) return;
                               if (already) {
+                                // Rollback
+                                setState(() {
+                                  _quote = _quote.copyWith(
+                                    reactionCounts: {
+                                      ..._quote.reactionCounts,
+                                      key: prevCount,
+                                    },
+                                  );
+                                });
                                 messenger.showSnackBar(
                                   const SnackBar(
                                     content: Text('이미 반응을 남겼어요.'),
                                   ),
                                 );
-                                return;
                               }
-
-                              final key = reactionTypeToFirestore(reaction);
-                              final prev = _quote.reactionCounts[key] ?? 0;
+                            } catch (e) {
+                              if (!mounted) return;
+                              // Rollback on error
                               setState(() {
                                 _quote = _quote.copyWith(
                                   reactionCounts: {
                                     ..._quote.reactionCounts,
-                                    key: prev + 1,
+                                    key: prevCount,
                                   },
                                 );
                               });
-                            } catch (e) {
-                              if (!mounted) return;
                               messenger.showSnackBar(
                                 SnackBar(content: Text('반응 실패: $e')),
                               );
@@ -430,16 +448,33 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                                   extra: const LoginRedirect.pop());
                               return;
                             }
+
+                            // Optimistic UI update
+                            ref
+                                .read(likedQuotesProvider.notifier)
+                                .markLiked(quote.id);
+                            setState(() {
+                              _quote = _quote.copyWith(
+                                likeCount: _quote.likeCount + 1,
+                              );
+                            });
+
                             final messenger = ScaffoldMessenger.of(context);
                             try {
                               final alreadyLiked = await ref
                                   .read(_interactionsRepoProvider)
                                   .likeQuoteOnce(quoteId: quote.id);
-                              ref
-                                  .read(likedQuotesProvider.notifier)
-                                  .markLiked(quote.id);
                               if (!mounted) return;
                               if (alreadyLiked) {
+                                // Rollback
+                                ref
+                                    .read(likedQuotesProvider.notifier)
+                                    .unmarkLiked(quote.id);
+                                setState(() {
+                                  _quote = _quote.copyWith(
+                                    likeCount: _quote.likeCount - 1,
+                                  );
+                                });
                                 messenger.showSnackBar(
                                   const SnackBar(
                                     content: Text('이미 좋아요한 글입니다.'),
@@ -448,6 +483,15 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                               }
                             } catch (e) {
                               if (!mounted) return;
+                              // Rollback on error
+                              ref
+                                  .read(likedQuotesProvider.notifier)
+                                  .unmarkLiked(quote.id);
+                              setState(() {
+                                _quote = _quote.copyWith(
+                                  likeCount: _quote.likeCount - 1,
+                                );
+                              });
                               messenger.showSnackBar(
                                 SnackBar(content: Text('좋아요 실패: $e')),
                               );
@@ -460,11 +504,14 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                                   extra: const LoginRedirect.pop());
                               return;
                             }
+
+                            // Optimistic UI update (toggle current state)
+                            final controller =
+                                ref.read(savedQuotesControllerProvider);
+
                             final messenger = ScaffoldMessenger.of(context);
                             try {
-                              final saved = await ref
-                                  .read(savedQuotesControllerProvider)
-                                  .toggleSave(quote);
+                              final saved = await controller.toggleSave(quote);
                               if (!mounted) return;
                               messenger.showSnackBar(
                                 SnackBar(
@@ -473,6 +520,8 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                               );
                             } catch (e) {
                               if (!mounted) return;
+                              // Rollback on error (toggle back)
+                              await controller.toggleSave(quote);
                               messenger.showSnackBar(
                                 SnackBar(content: Text('담기 실패: $e')),
                               );

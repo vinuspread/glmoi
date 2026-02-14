@@ -145,12 +145,12 @@ Notes:
 ## Environments
 
 We use two environments (NO `stg`):
-- `dev`: development/testing
+- `dev`: development/testing (NOT USED)
 - `prod`: production
 
 Policy:
-- Local development and internal testing use `dev`.
-- Production releases (Play Store) use `prod`.
+- **ALL development, testing, and production use `prod` flavor only.**
+- `dev` flavor exists but is not used in this project.
 
 Android flavors:
 - `dev` -> applicationId `co.vinus.glmoi.dev`
@@ -164,13 +164,14 @@ Build debug APKs:
 - `flutter build apk --debug --flavor dev`
 - `flutter build apk --debug --flavor prod`
 
-## Dev-Only Workflow (Team Rule)
+## Development Workflow (Team Rule)
 
-We do day-to-day development only on the `dev` flavor.
+**IMPORTANT: This project uses `prod` flavor directly for all development and deployment.**
 
-- Default run command: `flutter run --flavor dev`
-- Default debug APK: `flutter build apk --debug --flavor dev`
-- Use `prod` flavor only for release verification (not for regular development).
+- We do NOT use `dev` flavor for regular development
+- Default run command: `flutter run --flavor prod`
+- Default debug APK: `flutter build apk --debug --flavor prod`
+- All changes are tested and deployed directly to production environment
 
 ## UI / Dev Separation (MUST)
 
