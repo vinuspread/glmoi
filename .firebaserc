@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "glmoi-prod",
+    "dev": "glmoi-dev",
+    "stg": "glmoi-stg",
+    "prod": "glmoi-prod"
+  }
+}

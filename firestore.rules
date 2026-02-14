@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && (
+          request.auth.token.admin == true
+          || request.auth.token.email == "vinus@vinus.co.kr"
+        );
+    }
+
+    function isActiveQuote() {
+      return resource.data.is_active == true;
+    }
+
+    // Main admin-managed collections
+    match /quotes/{docId} {
+      // Per-user reactions (server-written only)
+      match /reactions/{uid} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create, update, delete: if false;
+      }
+
+      // Public read is allowed only for active docs.
+      // Admin retains full read/write for moderation and operations.
+      allow read: if isAdmin() || isActiveQuote();
+
+      // Admin can fully manage content.
+      allow write: if isAdmin();
+    }
+
+    match /users/{uid} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+
+      // Users can update their own profile doc.
+      // Keep the schema tight so clients can't write arbitrary fields.
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'provider',
+          'provider_user_id',
+          'display_name',
+          'photo_url',
+          'createdAt',
+          'updatedAt',
+          'last_login_at'
+        ])
+        && (!('display_name' in request.resource.data)
+          || (request.resource.data.display_name is string
+            && request.resource.data.display_name.size() > 0
+            && request.resource.data.display_name.size() <= 20))
+        && (!('photo_url' in request.resource.data)
+          || (request.resource.data.photo_url is string
+            && request.resource.data.photo_url.size() <= 500));
+
+      allow delete: if isAdmin();
+
+      // Saved quotes subcollection
+      match /saved_quotes/{quoteId} {
+        // Users can only read/write their own saved quotes
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
+    match /image_assets/{docId} {
+      allow read: if isAdmin() || (
+        resource.data.app_id == 'maumsori'
+        && resource.data.is_active == true
+      );
+      allow write: if isAdmin();
+    }
+
+    // Public remote config (end-user app reads this)
+    match /config/ad_config {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /config/app_config {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /config/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /admin_settings/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Used for admin-only duplicate prevention.
+    match /dedup_quotes/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Default deny.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
