@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/font_scale_provider.dart';
+import '../../../core/backend/functions_client.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -10,6 +12,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isLoggedIn = ref.watch(authProvider);
+    final currentFontScale = ref.watch(fontScaleProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -18,6 +21,55 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // 글모이 설정 섹션
+          const _SectionHeader(title: '글모이 설정'),
+          const SizedBox(height: 8),
+          Container(
+            decoration: AppTheme.cardDecoration(elevated: true),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '폰트 크기',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...FontScaleLevel.values.map((level) {
+                  return InkWell(
+                    onTap: () {
+                      ref.read(fontScaleProvider.notifier).setScale(level);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          Radio<FontScaleLevel>(
+                            value: level,
+                            groupValue: currentFontScale,
+                            onChanged: (value) {
+                              if (value != null) {
+                                ref
+                                    .read(fontScaleProvider.notifier)
+                                    .setScale(value);
+                              }
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          Text(level.label),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
           // 계정 섹션
           if (isLoggedIn) ...[
             const _SectionHeader(title: '계정'),
@@ -66,6 +118,11 @@ class SettingsScreen extends ConsumerWidget {
                 }
               },
             ),
+            _SettingsTile(
+              icon: Icons.delete_forever,
+              title: '탈퇴하기',
+              onTap: () => _showDeleteAccountDialog(context, ref),
+            ),
             const SizedBox(height: 24),
           ] else ...[
             const _SectionHeader(title: '계정'),
@@ -81,6 +138,16 @@ class SettingsScreen extends ConsumerWidget {
           // 앱 정보 섹션
           const _SectionHeader(title: '앱 정보'),
           const SizedBox(height: 8),
+          _SettingsTile(
+            icon: Icons.business_outlined,
+            title: '회사소개',
+            onTap: () => context.push('/settings/company-info'),
+          ),
+          _SettingsTile(
+            icon: Icons.description_outlined,
+            title: '이용약관',
+            onTap: () => context.push('/settings/terms'),
+          ),
           const _SettingsTile(
             icon: Icons.info_outline,
             title: '버전 정보',
@@ -142,6 +209,67 @@ class _SettingsTile extends StatelessWidget {
         onTap: onTap,
         enabled: onTap != null,
       ),
+    );
+  }
+}
+
+Future<void> _showDeleteAccountDialog(
+    BuildContext context, WidgetRef ref) async {
+  final shouldDelete = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('탈퇴하기'),
+      content: const Text(
+        '계정을 탈퇴하시겠습니까?\n\n작성한 글과 모든 활동 기록이 삭제되며, 복구할 수 없습니다.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('취소'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.red,
+          ),
+          child: const Text('탈퇴하기'),
+        ),
+      ],
+    ),
+  );
+
+  if (shouldDelete != true) return;
+
+  if (!context.mounted) return;
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => const Center(
+      child: CircularProgressIndicator(),
+    ),
+  );
+
+  try {
+    final callable = FunctionsClient.instance.httpsCallable('deleteAccount');
+    await callable.call();
+
+    await ref.read(authProvider.notifier).logout();
+
+    if (!context.mounted) return;
+    Navigator.of(context).pop();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('계정이 삭제되었습니다.')),
+    );
+
+    context.go('/home');
+  } catch (e) {
+    if (!context.mounted) return;
+    Navigator.of(context).pop();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('탈퇴 실패: $e')),
     );
   }
 }

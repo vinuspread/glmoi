@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/auth/auth_service.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../widgets/profile_image_edit_dialog.dart';
+import '../widgets/profile_edit_dialog.dart';
+import '../providers/user_stats_provider.dart';
 
 class MyPageScreen extends ConsumerWidget {
   const MyPageScreen({super.key});
@@ -69,11 +70,11 @@ class MyPageScreen extends ConsumerWidget {
                       final messenger = ScaffoldMessenger.of(context);
                       final saved = await showDialog<bool>(
                         context: context,
-                        builder: (_) => const ProfileImageEditDialog(),
+                        builder: (_) => const ProfileEditDialog(),
                       );
                       if (saved == true) {
                         messenger.showSnackBar(
-                          const SnackBar(content: Text('프로필 이미지가 저장되었습니다.')),
+                          const SnackBar(content: Text('프로필이 저장되었습니다.')),
                         );
                       }
                     },
@@ -131,12 +132,13 @@ class MyPageScreen extends ConsumerWidget {
                       final messenger = ScaffoldMessenger.of(context);
                       final saved = await showDialog<bool>(
                         context: context,
-                        builder: (_) => const ProfileImageEditDialog(),
+                        builder: (_) => const ProfileEditDialog(),
                       );
                       if (saved == true) {
                         messenger.showSnackBar(
-                          const SnackBar(content: Text('프로필 이미지가 저장되었습니다.')),
+                          const SnackBar(content: Text('프로필이 저장되었습니다.')),
                         );
+                        ref.invalidate(userStatsProvider);
                       }
                     },
                     icon: const Icon(Icons.edit),
@@ -148,27 +150,108 @@ class MyPageScreen extends ConsumerWidget {
 
             const SizedBox(height: 16),
 
-            // 내 활동
+            // 통계 카드
             Container(
               decoration: AppTheme.cardDecoration(elevated: true),
-              child: Column(
-                children: [
-                  ListTile(
-                    leading:
-                        const Icon(Icons.edit_note, color: AppTheme.accent),
-                    title: const Text('내가 쓴 글'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push('/malmoi/mine'),
+              padding: const EdgeInsets.all(20),
+              child: ref.watch(userStatsProvider).when(
+                    data: (stats) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '내 활동',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _StatRow(
+                          icon: Icons.edit_note,
+                          label: '내가 쓴 글',
+                          count: stats.myQuotesCount,
+                          onTap: () => context.push('/malmoi/mine'),
+                        ),
+                        const SizedBox(height: 12),
+                        _StatRow(
+                          icon: Icons.bookmark,
+                          label: '담은 글',
+                          count: stats.savedQuotesCount,
+                          onTap: () => context.push('/saved-quotes'),
+                        ),
+                        const SizedBox(height: 12),
+                        _StatRow(
+                          icon: Icons.favorite,
+                          label: '좋아요',
+                          count: stats.likedQuotesCount,
+                          onTap: null,
+                        ),
+                        const SizedBox(height: 12),
+                        _StatRow(
+                          icon: Icons.share,
+                          label: '공유',
+                          count: stats.sharedQuotesCount,
+                          onTap: null,
+                        ),
+                        const SizedBox(height: 20),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        const Text(
+                          '내가 보낸 감정',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _ReactionStat(
+                              iconPath: 'assets/icons/reactions/comfort.png',
+                              label: '위로',
+                              count: stats.reactionStats['comfort'] ?? 0,
+                            ),
+                            _ReactionStat(
+                              iconPath: 'assets/icons/reactions/empathize.png',
+                              label: '공감',
+                              count: stats.reactionStats['empathize'] ?? 0,
+                            ),
+                            _ReactionStat(
+                              iconPath: 'assets/icons/reactions/good.png',
+                              label: '멋진글',
+                              count: stats.reactionStats['good'] ?? 0,
+                            ),
+                            _ReactionStat(
+                              iconPath: 'assets/icons/reactions/touched.png',
+                              label: '감동',
+                              count: stats.reactionStats['touched'] ?? 0,
+                            ),
+                            _ReactionStat(
+                              iconPath: 'assets/icons/reactions/fan.png',
+                              label: '팬',
+                              count: stats.reactionStats['fan'] ?? 0,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    loading: () => const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(40),
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                    error: (error, stack) => Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Text(
+                          '통계를 불러올 수 없습니다.',
+                          style: TextStyle(color: AppTheme.textSecondary),
+                        ),
+                      ),
+                    ),
                   ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.bookmark, color: AppTheme.accent),
-                    title: const Text('담은 글'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push('/saved-quotes'),
-                  ),
-                ],
-              ),
             ),
           ],
         ),
@@ -181,6 +264,130 @@ class MyPageScreen extends ConsumerWidget {
       Icons.person,
       color: AppTheme.textSecondary,
       size: 50,
+    );
+  }
+}
+
+class _StatRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int count;
+  final VoidCallback? onTap;
+
+  const _StatRow({
+    required this.icon,
+    required this.label,
+    required this.count,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Row(
+      children: [
+        Icon(icon, color: AppTheme.accent, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 15),
+          ),
+        ),
+        Text(
+          '$count개',
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.accent,
+          ),
+        ),
+        if (onTap != null) ...[
+          const SizedBox(width: 8),
+          const Icon(Icons.chevron_right,
+              size: 20, color: AppTheme.textSecondary),
+        ],
+      ],
+    );
+
+    if (onTap != null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: content,
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: content,
+    );
+  }
+}
+
+class _ReactionStat extends StatelessWidget {
+  final String iconPath;
+  final String label;
+  final int count;
+
+  const _ReactionStat({
+    required this.iconPath,
+    required this.label,
+    required this.count,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(13),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipOval(
+            child: Image.asset(
+              iconPath,
+              width: 32,
+              height: 32,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.sentiment_satisfied,
+                color: AppTheme.textSecondary,
+                size: 24,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: AppTheme.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '$count',
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.accent,
+          ),
+        ),
+      ],
     );
   }
 }

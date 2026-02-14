@@ -15,6 +15,8 @@ import '../features/quotes/presentation/detail/quote_detail_pager_screen.dart';
 import '../features/quotes/presentation/detail/quote_detail_screen.dart';
 import '../features/quotes/domain/quote.dart';
 import '../features/settings/presentation/settings_screen.dart';
+import '../features/settings/presentation/screens/company_info_screen.dart';
+import '../features/settings/presentation/screens/terms_screen.dart';
 import '../features/profile/presentation/screens/mypage_screen.dart';
 import '../features/profile/presentation/screens/saved_quotes_screen.dart';
 
@@ -87,6 +89,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/company-info',
+        builder: (context, state) => const CompanyInfoScreen(),
+      ),
+      GoRoute(
+        path: '/settings/terms',
+        builder: (context, state) => const TermsScreen(),
       ),
       GoRoute(
         path: '/mypage',
