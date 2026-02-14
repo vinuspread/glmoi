@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.badWordsValidate = exports.deleteMalmoiPost = exports.updateMalmoiPost = exports.createMalmoiPost = exports.moderateUserMalmoiBadWords = exports.reactToQuoteOnce = exports.reportMalmoiOnce = exports.incrementShareCount = exports.likeQuoteOnce = exports.kakaoCustomToken = exports.fillImageAssetDerivedUrls = exports.optimizeImageOnUpload = void 0;
+exports.badWordsValidate = exports.deleteAccount = exports.syncProfileToQuotes = exports.deleteMalmoiPost = exports.updateMalmoiPost = exports.createMalmoiPost = exports.moderateUserMalmoiBadWords = exports.reactToQuoteOnce = exports.reportMalmoiOnce = exports.incrementShareCount = exports.likeQuoteOnce = exports.kakaoCustomToken = exports.fillImageAssetDerivedUrls = exports.optimizeImageOnUpload = void 0;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
 const badWords_1 = require("./badWords");
@@ -54,6 +54,10 @@ const malmoi_1 = require("./malmoi");
 Object.defineProperty(exports, "createMalmoiPost", { enumerable: true, get: function () { return malmoi_1.createMalmoiPost; } });
 Object.defineProperty(exports, "deleteMalmoiPost", { enumerable: true, get: function () { return malmoi_1.deleteMalmoiPost; } });
 Object.defineProperty(exports, "updateMalmoiPost", { enumerable: true, get: function () { return malmoi_1.updateMalmoiPost; } });
+const profile_1 = require("./profile");
+Object.defineProperty(exports, "syncProfileToQuotes", { enumerable: true, get: function () { return profile_1.syncProfileToQuotes; } });
+const account_1 = require("./account");
+Object.defineProperty(exports, "deleteAccount", { enumerable: true, get: function () { return account_1.deleteAccount; } });
 admin.initializeApp();
 exports.badWordsValidate = (0, https_1.onCall)(async (request) => {
     const text = request.data?.text ?? '';

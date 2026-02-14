@@ -8,6 +8,8 @@ import { kakaoCustomToken } from './kakaoAuth';
 import { incrementShareCount, likeQuoteOnce, reactToQuoteOnce, reportMalmoiOnce } from './interactions';
 import { moderateUserMalmoiBadWords } from './quoteModeration';
 import { createMalmoiPost, deleteMalmoiPost, updateMalmoiPost } from './malmoi';
+import { syncProfileToQuotes } from './profile';
+import { deleteAccount } from './account';
 
 admin.initializeApp();
 
@@ -24,6 +26,9 @@ export { likeQuoteOnce, incrementShareCount, reportMalmoiOnce, reactToQuoteOnce 
 
 export { moderateUserMalmoiBadWords };
 export { createMalmoiPost, updateMalmoiPost, deleteMalmoiPost };
+
+export { syncProfileToQuotes };
+export { deleteAccount };
 
 export const badWordsValidate = onCall(async (request) => {
   const text = (request.data?.text as string | undefined) ?? '';

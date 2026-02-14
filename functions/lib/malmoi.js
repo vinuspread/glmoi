@@ -44,8 +44,15 @@ exports.createMalmoiPost = (0, https_1.onCall)({
     region: REGION,
     timeoutSeconds: 30,
     memory: '256MiB',
+    invoker: 'public', // Grant allUsers roles/run.invoker
 }, async (request) => {
+    console.log('[createMalmoiPost] Called', {
+        hasAuth: !!request.auth,
+        uid: request.auth?.uid,
+        email: request.auth?.token?.email,
+    });
     if (!request.auth) {
+        console.error('[createMalmoiPost] No auth context!');
         throw new https_1.HttpsError('unauthenticated', 'login required');
     }
     const content = parseString(request.data?.content, 'content', { max: 2000 });
@@ -82,6 +89,7 @@ exports.updateMalmoiPost = (0, https_1.onCall)({
     region: REGION,
     timeoutSeconds: 30,
     memory: '256MiB',
+    invoker: 'public',
 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'login required');
@@ -111,6 +119,7 @@ exports.deleteMalmoiPost = (0, https_1.onCall)({
     region: REGION,
     timeoutSeconds: 30,
     memory: '256MiB',
+    invoker: 'public',
 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'login required');

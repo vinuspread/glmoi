@@ -128,4 +128,123 @@
 - 본 프로젝트는 무조건 Prod 모드만 진행함.
 
 ### Github 백업
-- https://github.com/vinuspread/glmoi 에 커밋.
+GitHub 저장소 구조
+https://github.com/vinuspread/glmoi
+├── main (브랜치) ← glmoi 앱
+└── admin (브랜치) ← app-admin 웹 대시보드
+
+
+### 불필요한 정보 노출 불필요
+Compaction, session summary 내용은 모니터에 노출하지 말것.
+
+---
+
+## 6. 마이페이지 & 설정 확장 작업 순서 (Phase 1-5)
+
+### Phase 1: 설정 화면 - 폰트 크기 설정 (최우선)
+**이유:** "여기에서 설정한 값(폰트크기)이 가장 최우선으로 반영 된다" - 전역 영향이므로 먼저 구현
+
+**작업 내역:**
+1. `SharedPreferences`에 폰트 크기 저장 (`font_scale`: 0.85/1.0/1.15/1.3)
+2. `TextScaler` 전역 적용 (`MaterialApp.builder`)
+3. 설정 화면에 라디오 버튼 UI 추가
+4. 실시간 미리보기 (설정 변경시 즉시 반영)
+
+**예상 수정 파일:**
+- `lib/features/settings/presentation/settings_screen.dart`
+- `lib/core/theme/app_theme.dart` (또는 `lib/app/app.dart`)
+- `lib/core/utils/font_scale_provider.dart` (신규)
+
+**예상 시간:** 30분
+
+---
+
+### Phase 2: 마이페이지 - 통계 표시 (중간 우선순위)
+
+**작업 내역:**
+1. **Firestore 쿼리 추가:**
+   - 내가 쓴 글: `quotes.where('userId', isEqualTo: currentUserId).count()`
+   - 담은 글: `saved_quotes.where('userId', isEqualTo: currentUserId).count()`
+   - 좋아요한 글: `liked_quotes.where('userId', isEqualTo: currentUserId).count()` (컬렉션 확인 필요)
+   - 공유한 글: `share_records.where('userId', isEqualTo: currentUserId).count()` (컬렉션 확인 필요)
+   - 5개 감정별 통계: `reactions.where('userId', isEqualTo: currentUserId).groupBy('type').count()`
+
+2. **UI 구현:**
+   - 숫자 표시 위젯 (로딩 상태 처리)
+   - 5개 감정 아이콘 + 숫자 가로 배치
+
+**예상 수정 파일:**
+- `lib/features/profile/presentation/screens/mypage_screen.dart`
+- `lib/features/profile/data/repositories/user_stats_repository.dart` (신규 - Repository 필요시)
+- `lib/features/profile/presentation/providers/user_stats_provider.dart` (신규)
+
+**주의:** README 제약사항에 따라 `data/repositories`는 수정 불가 범위이므로, 기존 repository 확인 후 사용 또는 직접 Firestore 호출 결정 필요
+
+**예상 시간:** 1시간
+
+---
+
+### Phase 3: 마이페이지 - 프로필 수정 동기화 (중간 우선순위)
+
+**작업 내역:**
+1. **프로필 수정시 Cloud Function 호출:**
+   - 닉네임/이미지 변경 → Firebase Function 트리거
+   - `quotes` 컬렉션의 `authorName`, `authorPhotoUrl` 일괄 업데이트
+   - (또는 클라이언트에서 배치 업데이트 - 성능 고려 필요)
+
+2. **UI 수정:**
+   - "수정" 버튼 클릭시 로딩 상태 표시
+   - 완료시 성공 메시지
+
+**예상 작업:**
+- Backend: `/Users/sungyounghan/project/app-admin/functions/src/profile.ts` (신규)
+- Frontend: `lib/features/profile/presentation/screens/mypage_screen.dart`
+
+**주의:** Backend 작업이 필요하므로 Firebase Functions 배포 포함
+
+**예상 시간:** 1시간
+
+---
+
+### Phase 4: 설정 화면 - 탈퇴하기 (낮은 우선순위)
+
+**작업 내역:**
+1. 탈퇴 확인 다이얼로그
+2. Firebase Auth 계정 삭제 (`user.delete()`)
+3. Firestore 사용자 데이터 삭제 (Cloud Function 권장)
+4. 로그인 화면으로 이동
+
+**예상 수정 파일:**
+- `lib/features/settings/presentation/settings_screen.dart`
+- Backend: `/Users/sungyounghan/project/app-admin/functions/src/account.ts` (신규)
+
+**예상 시간:** 30분
+
+---
+
+### Phase 5: 설정 화면 - 회사소개/이용약관 (낮은 우선순위)
+
+**작업 내역:**
+1. 정적 페이지 또는 웹뷰 링크
+2. 간단한 텍스트 화면 또는 `url_launcher`
+
+**예상 수정 파일:**
+- `lib/features/settings/presentation/settings_screen.dart`
+- `lib/features/settings/presentation/screens/terms_screen.dart` (신규)
+- `lib/features/settings/presentation/screens/company_info_screen.dart` (신규)
+
+**예상 시간:** 20분
+
+---
+
+### 작업 순서 요약 (우선순위)
+
+| 순서 | 작업 | 예상 시간 | Backend 필요 |
+|-----|-----|---------|-------------|
+| 1️⃣ | **폰트 크기 설정** | 30분 | ❌ |
+| 2️⃣ | **마이페이지 통계 표시** | 1시간 | ❌ (Firestore 직접 쿼리) |
+| 3️⃣ | **프로필 수정 동기화** | 1시간 | ✅ (Cloud Function) |
+| 4️⃣ | **탈퇴하기** | 30분 | ✅ (Cloud Function) |
+| 5️⃣ | **회사소개/이용약관** | 20분 | ❌ |
+
+**진행 방법:** 1→2→3→4→5 순서로 진행하며, 각 단계 완료 후 빌드/배포하여 검증
