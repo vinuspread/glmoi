@@ -1,0 +1,68 @@
+name: glmoi
+description: "A comfort-first content curation app for seniors."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.3.5
+
+  # Navigation
+  go_router: ^17.0.1
+
+  # UI/Assets
+  google_fonts: ^8.0.0
+  cupertino_icons: ^1.0.6
+  cached_network_image: ^3.3.0
+  flutter_svg: ^2.2.0
+
+  # Backend & Auth
+  firebase_core: ^4.4.0
+  firebase_auth: ^6.1.4
+  cloud_firestore: ^6.1.2
+  cloud_functions: ^6.0.6
+  kakao_flutter_sdk: ^1.9.0
+  kakao_flutter_sdk_share: ^1.9.0
+
+  # Ads & Functional
+  google_mobile_ads: ^7.0.0
+  screenshot: ^3.0.0
+  share_plus: ^12.0.1
+  path_provider: ^2.1.2
+  shared_preferences: ^2.2.2
+  intl: ^0.20.2
+  google_sign_in: ^6.2.1
+  firebase_storage: ^13.0.6
+  image_picker: ^1.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.8
+  riverpod_generator: ^2.4.0
+  custom_lint: ^0.6.4
+  riverpod_lint: ^2.3.10
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icons/reactions/
+  
+  fonts:
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/Pretendard-Regular.otf
+          weight: 400
+        - asset: assets/fonts/Pretendard-Medium.otf
+          weight: 500
+        - asset: assets/fonts/Pretendard-Bold.otf
+          weight: 700

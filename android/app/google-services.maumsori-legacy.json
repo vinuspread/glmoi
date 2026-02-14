@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "874934817337",
+    "project_id": "maumsori-4e514",
+    "storage_bucket": "maumsori-4e514.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:874934817337:android:172876fd296754e117b3e8",
+        "android_client_info": {
+          "package_name": "com.example.maumsori"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD1x_W6J4ScNZSxLKInnTou_l1uU5dcrkg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
