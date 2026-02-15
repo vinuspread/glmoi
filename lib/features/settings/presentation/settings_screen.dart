@@ -38,33 +38,32 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                ...FontScaleLevel.values.map((level) {
-                  return InkWell(
-                    onTap: () {
-                      ref.read(fontScaleProvider.notifier).setScale(level);
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        children: [
-                          Radio<FontScaleLevel>(
-                            value: level,
-                            groupValue: currentFontScale,
-                            onChanged: (value) {
-                              if (value != null) {
-                                ref
-                                    .read(fontScaleProvider.notifier)
-                                    .setScale(value);
-                              }
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          Text(level.label),
-                        ],
+                Row(
+                  children: FontScaleLevel.values.map((level) {
+                    final isSelected = currentFontScale == level;
+                    return Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: SizedBox(
+                          height: 48,
+                          child: isSelected
+                              ? FilledButton(
+                                  onPressed: null,
+                                  child: Text(level.label),
+                                )
+                              : OutlinedButton(
+                                  onPressed: () {
+                                    ref
+                                        .read(fontScaleProvider.notifier)
+                                        .setScale(level);
+                                  },
+                                  child: Text(level.label),
+                                ),
+                        ),
                       ),
-                    ),
-                  );
-                }),
+                    );
+                  }).toList(),
+                ),
               ],
             ),
           ),
