@@ -18,6 +18,7 @@ import '../saved_quotes_provider.dart';
 import '../../domain/quote.dart';
 import '../../../reactions/domain/reaction_type.dart';
 import '../../../reactions/presentation/providers/my_reaction_provider.dart';
+import '../widgets/content_text.dart';
 
 final _interactionsRepoProvider = Provider((ref) => InteractionsRepository());
 final _quotesRepoProvider = Provider((ref) => QuotesRepository());
@@ -805,16 +806,13 @@ class _ShortFormContent extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              // Preserve user newlines, avoid mid-token wraps.
+            ContentText(
               _preventMidTokenWrapKeepNewlines(quote.content),
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                height: 1.55,
-                fontWeight: FontWeight.w500,
-              ),
+              baseFontSize: 24,
+              height: 1.55,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
             ),
             if (author.isNotEmpty) ...[
               const SizedBox(height: 20),
@@ -849,15 +847,13 @@ class _LongFormContent extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 8),
-            Text(
+            ContentText(
               _preventMidTokenWrapKeepNewlines(quote.content),
               textAlign: TextAlign.left,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                height: 1.65,
-                fontWeight: FontWeight.w400,
-              ),
+              baseFontSize: 22,
+              height: 1.65,
+              fontWeight: FontWeight.w400,
+              color: Colors.white,
             ),
             if (author.isNotEmpty) ...[
               const SizedBox(height: 20),
