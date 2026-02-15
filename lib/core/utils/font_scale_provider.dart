@@ -3,10 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Font scale levels
 enum FontScaleLevel {
-  small(0.85, '작게'),
+  small(0.85, '작게(최소)'),
   normal(1.0, '보통'),
   large(1.15, '크게'),
-  extraLarge(1.3, '가장 크게');
+  extraLarge(1.3, '가장크게(최대)');
 
   final double scale;
   final String label;
