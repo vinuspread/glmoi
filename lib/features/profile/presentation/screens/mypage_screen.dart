@@ -186,18 +186,11 @@ class MyPageScreen extends ConsumerWidget {
                           count: stats.likedQuotesCount,
                           onTap: null,
                         ),
-                        const SizedBox(height: 12),
-                        _StatRow(
-                          icon: Icons.share,
-                          label: '공유',
-                          count: stats.sharedQuotesCount,
-                          onTap: null,
-                        ),
                         const SizedBox(height: 20),
                         const Divider(),
                         const SizedBox(height: 16),
                         const Text(
-                          '내가 보낸 감정',
+                          '내가 받은 감정',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -210,27 +203,30 @@ class MyPageScreen extends ConsumerWidget {
                             _ReactionStat(
                               iconPath: 'assets/icons/reactions/comfort.png',
                               label: '위로',
-                              count: stats.reactionStats['comfort'] ?? 0,
+                              count:
+                                  stats.receivedReactionStats['comfort'] ?? 0,
                             ),
                             _ReactionStat(
                               iconPath: 'assets/icons/reactions/empathize.png',
                               label: '공감',
-                              count: stats.reactionStats['empathize'] ?? 0,
+                              count:
+                                  stats.receivedReactionStats['empathize'] ?? 0,
                             ),
                             _ReactionStat(
                               iconPath: 'assets/icons/reactions/good.png',
                               label: '멋진글',
-                              count: stats.reactionStats['good'] ?? 0,
+                              count: stats.receivedReactionStats['good'] ?? 0,
                             ),
                             _ReactionStat(
                               iconPath: 'assets/icons/reactions/touched.png',
                               label: '감동',
-                              count: stats.reactionStats['touched'] ?? 0,
+                              count:
+                                  stats.receivedReactionStats['touched'] ?? 0,
                             ),
                             _ReactionStat(
                               iconPath: 'assets/icons/reactions/fan.png',
                               label: '팬',
-                              count: stats.reactionStats['fan'] ?? 0,
+                              count: stats.receivedReactionStats['fan'] ?? 0,
                             ),
                           ],
                         ),

@@ -16,21 +16,18 @@ class UserStatsRepository {
     }
 
     try {
-      // 병렬로 모든 쿼리 실행
       final results = await Future.wait([
         _getMyQuotesCount(user.uid),
         _getSavedQuotesCount(user.uid),
         _getLikedQuotesCount(user.uid),
-        _getSharedQuotesCount(user.uid),
-        _getReactionStats(user.uid),
+        _getReceivedReactionStats(user.uid),
       ]);
 
       return UserStats(
         myQuotesCount: results[0] as int,
         savedQuotesCount: results[1] as int,
         likedQuotesCount: results[2] as int,
-        sharedQuotesCount: results[3] as int,
-        reactionStats: results[4] as Map<String, int>,
+        receivedReactionStats: results[3] as Map<String, int>,
       );
     } catch (e) {
       return UserStats.empty();
@@ -38,13 +35,17 @@ class UserStatsRepository {
   }
 
   Future<int> _getMyQuotesCount(String userId) async {
-    final snapshot = await _firestore
-        .collection('quotes')
-        .where('user_id', isEqualTo: userId)
-        .where('is_user_post', isEqualTo: true)
-        .count()
-        .get();
-    return snapshot.count ?? 0;
+    try {
+      final snapshot = await _firestore
+          .collection('quotes')
+          .where('user_uid', isEqualTo: userId)
+          .where('is_user_post', isEqualTo: true)
+          .count()
+          .get();
+      return snapshot.count ?? 0;
+    } catch (e) {
+      return 0;
+    }
   }
 
   Future<int> _getSavedQuotesCount(String userId) async {
@@ -64,28 +65,12 @@ class UserStatsRepository {
     return 0;
   }
 
-  Future<int> _getSharedQuotesCount(String userId) async {
-    // share_records 컬렉션이 없다면 0 반환
-    // TODO: 공유 기록이 Firestore에 저장되는지 확인 필요
+  Future<Map<String, int>> _getReceivedReactionStats(String userId) async {
     try {
-      final snapshot = await _firestore
-          .collection('share_records')
-          .where('user_id', isEqualTo: userId)
-          .count()
-          .get();
-      return snapshot.count ?? 0;
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  Future<Map<String, int>> _getReactionStats(String userId) async {
-    try {
-      // 모든 quotes의 reactions 서브컬렉션에서 사용자의 반응 조회
-      // Collection group query 사용
-      final snapshot = await _firestore
-          .collectionGroup('reactions')
-          .where('user_id', isEqualTo: userId)
+      final myQuotesSnapshot = await _firestore
+          .collection('quotes')
+          .where('user_uid', isEqualTo: userId)
+          .where('is_user_post', isEqualTo: true)
           .get();
 
       final stats = <String, int>{
@@ -96,11 +81,16 @@ class UserStatsRepository {
         'fan': 0,
       };
 
-      for (final doc in snapshot.docs) {
-        final data = doc.data();
-        final reactionType = data['reaction_type'] as String?;
-        if (reactionType != null && stats.containsKey(reactionType)) {
-          stats[reactionType] = (stats[reactionType] ?? 0) + 1;
+      for (final quoteDoc in myQuotesSnapshot.docs) {
+        final reactionsSnapshot =
+            await quoteDoc.reference.collection('reactions').get();
+
+        for (final reactionDoc in reactionsSnapshot.docs) {
+          final data = reactionDoc.data();
+          final reactionType = data['reaction_type'] as String?;
+          if (reactionType != null && stats.containsKey(reactionType)) {
+            stats[reactionType] = (stats[reactionType] ?? 0) + 1;
+          }
         }
       }
 
@@ -121,15 +111,13 @@ class UserStats {
   final int myQuotesCount;
   final int savedQuotesCount;
   final int likedQuotesCount;
-  final int sharedQuotesCount;
-  final Map<String, int> reactionStats;
+  final Map<String, int> receivedReactionStats;
 
   const UserStats({
     required this.myQuotesCount,
     required this.savedQuotesCount,
     required this.likedQuotesCount,
-    required this.sharedQuotesCount,
-    required this.reactionStats,
+    required this.receivedReactionStats,
   });
 
   factory UserStats.empty() {
@@ -137,8 +125,7 @@ class UserStats {
       myQuotesCount: 0,
       savedQuotesCount: 0,
       likedQuotesCount: 0,
-      sharedQuotesCount: 0,
-      reactionStats: {
+      receivedReactionStats: {
         'comfort': 0,
         'empathize': 0,
         'good': 0,
