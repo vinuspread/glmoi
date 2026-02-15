@@ -14,6 +14,8 @@ class HomeShellContainer extends ConsumerStatefulWidget {
 class _HomeShellContainerState extends ConsumerState<HomeShellContainer> {
   var _index = 0;
 
+  // FCM initialization moved to app.dart - no need for duplicate init here
+
   @override
   Widget build(BuildContext context) {
     return HomeShellView(

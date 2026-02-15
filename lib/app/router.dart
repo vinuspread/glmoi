@@ -7,6 +7,7 @@ import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/email_signup_screen.dart';
 import '../features/auth/domain/login_redirect.dart';
 import 'home_shell_container.dart';
+import 'router_helpers.dart';
 import '../features/malmoi/presentation/malmoi_edit_screen.dart';
 import '../features/malmoi/presentation/malmoi_my_posts_screen.dart';
 import '../features/malmoi/presentation/malmoi_write_screen.dart';
@@ -19,6 +20,7 @@ import '../features/settings/presentation/screens/company_info_screen.dart';
 import '../features/settings/presentation/screens/terms_screen.dart';
 import '../features/profile/presentation/screens/mypage_screen.dart';
 import '../features/profile/presentation/screens/saved_quotes_screen.dart';
+import '../features/profile/presentation/screens/liked_quotes_screen.dart';
 
 final rootNavigatorKeyProvider = Provider<GlobalKey<NavigatorState>>((ref) {
   return GlobalKey<NavigatorState>();
@@ -105,6 +107,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/saved-quotes',
         builder: (context, state) => const SavedQuotesScreen(),
+      ),
+      GoRoute(
+        path: '/liked-quotes',
+        builder: (context, state) => const LikedQuotesScreen(),
+      ),
+      // Direct quote detail by ID (for FCM deep linking)
+      GoRoute(
+        path: '/quotes/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          final type = state.uri.queryParameters['type'];
+          if (id == null) {
+            return const _RouteErrorScreen(message: 'Missing quote ID');
+          }
+          // Return a placeholder screen that fetches quote by id/type
+          return QuoteDetailByIdScreen(quoteId: id, quoteType: type);
+        },
       ),
     ],
   );
