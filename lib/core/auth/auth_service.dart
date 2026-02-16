@@ -173,18 +173,13 @@ class AuthService extends StateNotifier<bool> {
             user.updatePhotoURL(photo),
         ]);
 
-        // Run Firestore profile upsert in background - don't block UI
-        _upsertUserProfile(
+        await _upsertUserProfile(
           uid: user.uid,
           provider: 'kakao',
           providerUserId: kakaoUserId,
           displayName: name.isNotEmpty ? name : user.displayName,
           photoUrl: photo.isNotEmpty ? photo : user.photoURL,
-        ).catchError((e) {
-          if (kDebugMode) {
-            debugPrint('Background profile upsert failed: $e');
-          }
-        });
+        );
       }
 
       // CRITICAL: Reset Functions instance after login
@@ -218,18 +213,13 @@ class AuthService extends StateNotifier<bool> {
 
       final user = _auth.currentUser;
       if (user != null) {
-        // Run profile upsert in background - don't block UI
-        _upsertUserProfile(
+        await _upsertUserProfile(
           uid: user.uid,
           provider: 'google',
           providerUserId: googleUser.id,
           displayName: user.displayName,
           photoUrl: user.photoURL,
-        ).catchError((e) {
-          if (kDebugMode) {
-            debugPrint('Background profile upsert failed: $e');
-          }
-        });
+        );
       }
 
       // CRITICAL: Reset Functions instance after login
@@ -257,21 +247,15 @@ class AuthService extends StateNotifier<bool> {
     await _auth.signInWithEmailAndPassword(email: e, password: password);
     final user = _auth.currentUser;
     if (user != null) {
-      // Refresh token only (needed for Cloud Functions)
       await user.getIdToken(true);
 
-      // Run profile upsert in background - don't block UI
-      _upsertUserProfile(
+      await _upsertUserProfile(
         uid: user.uid,
         provider: 'email',
         providerUserId: null,
         displayName: user.displayName,
         photoUrl: user.photoURL,
-      ).catchError((e) {
-        if (kDebugMode) {
-          debugPrint('Background profile upsert failed: $e');
-        }
-      });
+      );
     }
     state = true;
   }
@@ -322,20 +306,13 @@ class AuthService extends StateNotifier<bool> {
       }
     }
 
-    try {
-      await _upsertUserProfile(
-        uid: user.uid,
-        provider: 'email',
-        providerUserId: null,
-        displayName: n,
-        photoUrl: (photoUrl ?? user.photoURL),
-      );
-    } catch (e) {
-      // Best-effort: user doc upsert can be retried on next app open.
-      if (kDebugMode) {
-        debugPrint('User profile upsert failed after email sign-up: $e');
-      }
-    }
+    await _upsertUserProfile(
+      uid: user.uid,
+      provider: 'email',
+      providerUserId: null,
+      displayName: n,
+      photoUrl: (photoUrl ?? user.photoURL),
+    );
 
     state = true;
   }

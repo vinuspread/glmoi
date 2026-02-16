@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/auth/auth_service.dart';
+import '../../../../core/backend/functions_client.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class ProfileImageEditDialog extends ConsumerStatefulWidget {
@@ -42,6 +43,18 @@ class _ProfileImageEditDialogState
     setState(() => _saving = true);
     try {
       await ref.read(authProvider.notifier).updateProfileImage(bytes);
+
+      // 프로필 이미지 변경 후 글모이 작성자 정보 자동 동기화
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final callable =
+            FunctionsClient.instance.httpsCallable('syncProfileToQuotes');
+        await callable.call({
+          'displayName': user.displayName ?? '',
+          'photoURL': user.photoURL,
+        });
+      }
+
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {

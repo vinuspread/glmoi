@@ -39,21 +39,8 @@ class QuotesFeedScreen extends ConsumerWidget {
         leadingWidth: 100,
         title: Text(title),
         automaticallyImplyLeading: false,
-        actions: [
-          const FeedTrailingButton(),
-          if (type == QuoteType.malmoi)
-            IconButton(
-              tooltip: '내 글',
-              onPressed: () {
-                if (!isLoggedIn) {
-                  context.push('/login',
-                      extra: const LoginRedirect.go('/malmoi/mine'));
-                  return;
-                }
-                context.push('/malmoi/mine');
-              },
-              icon: const Icon(Icons.person_outline),
-            ),
+        actions: const [
+          FeedTrailingButton(),
         ],
       ),
       floatingActionButton: type == QuoteType.malmoi

@@ -70,8 +70,6 @@ class MalmoiMyPostsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        leading: const FeedLeadingButton(),
-        leadingWidth: 100,
         title: const Text('내 글'),
         actions: const [
           FeedTrailingButton(),

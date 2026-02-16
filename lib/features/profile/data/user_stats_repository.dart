@@ -2,13 +2,59 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/backend/functions_client.dart';
+
 final userStatsRepositoryProvider = Provider((ref) => UserStatsRepository());
 
 class UserStatsRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  /// 사용자 통계 조회
+  bool _migrationAttempted = false;
+
+  Stream<UserStats> watchUserStats() {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return Stream.value(UserStats.empty());
+    }
+
+    return _firestore
+        .collection('users')
+        .doc(user.uid)
+        .snapshots()
+        .asyncMap((snapshot) async {
+      if (!snapshot.exists) {
+        return UserStats.empty();
+      }
+
+      final data = snapshot.data() ?? {};
+
+      final receivedReactions =
+          data['received_reactions'] as Map<String, dynamic>?;
+      final receivedReactionStats = <String, int>{
+        'comfort': (receivedReactions?['comfort'] as num?)?.toInt() ?? 0,
+        'empathize': (receivedReactions?['empathize'] as num?)?.toInt() ?? 0,
+        'good': (receivedReactions?['good'] as num?)?.toInt() ?? 0,
+        'touched': (receivedReactions?['touched'] as num?)?.toInt() ?? 0,
+        'fan': (receivedReactions?['fan'] as num?)?.toInt() ?? 0,
+      };
+
+      final stats = UserStats(
+        myQuotesCount: (data['my_quotes_count'] as num?)?.toInt() ?? 0,
+        savedQuotesCount: (data['saved_quotes_count'] as num?)?.toInt() ?? 0,
+        likedQuotesCount: (data['liked_quotes_count'] as num?)?.toInt() ?? 0,
+        receivedReactionStats: receivedReactionStats,
+      );
+
+      if (!_migrationAttempted && stats.needsMigration) {
+        _migrationAttempted = true;
+        await _triggerMigration();
+      }
+
+      return stats;
+    });
+  }
+
   Future<UserStats> getUserStats() async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -16,93 +62,52 @@ class UserStatsRepository {
     }
 
     try {
-      final results = await Future.wait([
-        _getMyQuotesCount(user.uid),
-        _getSavedQuotesCount(user.uid),
-        _getLikedQuotesCount(user.uid),
-        _getReceivedReactionStats(user.uid),
-      ]);
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
 
-      return UserStats(
-        myQuotesCount: results[0] as int,
-        savedQuotesCount: results[1] as int,
-        likedQuotesCount: results[2] as int,
-        receivedReactionStats: results[3] as Map<String, int>,
+      if (!userDoc.exists) {
+        return UserStats.empty();
+      }
+
+      final data = userDoc.data() ?? {};
+
+      final receivedReactions =
+          data['received_reactions'] as Map<String, dynamic>?;
+      final receivedReactionStats = <String, int>{
+        'comfort': (receivedReactions?['comfort'] as num?)?.toInt() ?? 0,
+        'empathize': (receivedReactions?['empathize'] as num?)?.toInt() ?? 0,
+        'good': (receivedReactions?['good'] as num?)?.toInt() ?? 0,
+        'touched': (receivedReactions?['touched'] as num?)?.toInt() ?? 0,
+        'fan': (receivedReactions?['fan'] as num?)?.toInt() ?? 0,
+      };
+
+      final stats = UserStats(
+        myQuotesCount: (data['my_quotes_count'] as num?)?.toInt() ?? 0,
+        savedQuotesCount: (data['saved_quotes_count'] as num?)?.toInt() ?? 0,
+        likedQuotesCount: (data['liked_quotes_count'] as num?)?.toInt() ?? 0,
+        receivedReactionStats: receivedReactionStats,
       );
+
+      if (!_migrationAttempted && stats.needsMigration) {
+        _migrationAttempted = true;
+        await _triggerMigration();
+
+        return getUserStats();
+      }
+
+      return stats;
     } catch (e) {
       return UserStats.empty();
     }
   }
 
-  Future<int> _getMyQuotesCount(String userId) async {
+  Future<void> _triggerMigration() async {
     try {
-      final snapshot = await _firestore
-          .collection('quotes')
-          .where('user_uid', isEqualTo: userId)
-          .where('is_user_post', isEqualTo: true)
-          .count()
-          .get();
-      return snapshot.count ?? 0;
+      final callable =
+          FunctionsClient.instance.httpsCallable('migrateUserStats');
+      await callable.call();
     } catch (e) {
-      return 0;
-    }
-  }
-
-  Future<int> _getSavedQuotesCount(String userId) async {
-    final snapshot = await _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('saved_quotes')
-        .count()
-        .get();
-    return snapshot.count ?? 0;
-  }
-
-  Future<int> _getLikedQuotesCount(String userId) async {
-    // liked_quotes 컬렉션이 없다면 0 반환
-    // 현재는 클라이언트 메모리에만 저장되므로 Firestore에서 조회 불가
-    // TODO: Firebase Functions에서 liked_quotes 컬렉션에 기록하도록 수정 필요
-    return 0;
-  }
-
-  Future<Map<String, int>> _getReceivedReactionStats(String userId) async {
-    try {
-      final myQuotesSnapshot = await _firestore
-          .collection('quotes')
-          .where('user_uid', isEqualTo: userId)
-          .where('is_user_post', isEqualTo: true)
-          .get();
-
-      final stats = <String, int>{
-        'comfort': 0,
-        'empathize': 0,
-        'good': 0,
-        'touched': 0,
-        'fan': 0,
-      };
-
-      for (final quoteDoc in myQuotesSnapshot.docs) {
-        final reactionsSnapshot =
-            await quoteDoc.reference.collection('reactions').get();
-
-        for (final reactionDoc in reactionsSnapshot.docs) {
-          final data = reactionDoc.data();
-          final reactionType = data['reaction_type'] as String?;
-          if (reactionType != null && stats.containsKey(reactionType)) {
-            stats[reactionType] = (stats[reactionType] ?? 0) + 1;
-          }
-        }
-      }
-
-      return stats;
-    } catch (e) {
-      return {
-        'comfort': 0,
-        'empathize': 0,
-        'good': 0,
-        'touched': 0,
-        'fan': 0,
-      };
+      // 마이그레이션 실패해도 앱 사용에는 지장 없도록 무시
+      // 새로운 활동부터 통계가 누적됨
     }
   }
 }
@@ -133,5 +138,12 @@ class UserStats {
         'fan': 0,
       },
     );
+  }
+
+  /// 마이그레이션이 필요한지 확인 (모든 통계가 0인 경우)
+  bool get needsMigration {
+    final totalReactions =
+        receivedReactionStats.values.fold<int>(0, (sum, count) => sum + count);
+    return myQuotesCount == 0 && savedQuotesCount == 0 && totalReactions == 0;
   }
 }

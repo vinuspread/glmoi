@@ -1,12 +1,28 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/liked_quotes_repository.dart';
+
 final likedQuotesProvider =
     StateNotifierProvider<LikedQuotesController, Set<String>>((ref) {
-  return LikedQuotesController();
+  final repo = ref.watch(likedQuotesRepositoryProvider);
+  return LikedQuotesController(repo);
 });
 
 class LikedQuotesController extends StateNotifier<Set<String>> {
-  LikedQuotesController() : super(const {});
+  final LikedQuotesRepository _repository;
+  bool _initialized = false;
+
+  LikedQuotesController(this._repository) : super(const {}) {
+    _loadLikedQuotes();
+  }
+
+  Future<void> _loadLikedQuotes() async {
+    if (_initialized) return;
+    _initialized = true;
+
+    final likedIds = await _repository.getLikedQuoteIds();
+    state = likedIds;
+  }
 
   bool isLiked(String quoteId) => state.contains(quoteId);
 
@@ -20,5 +36,10 @@ class LikedQuotesController extends StateNotifier<Set<String>> {
     if (!state.contains(quoteId)) return;
     final next = Set<String>.from(state)..remove(quoteId);
     state = next;
+  }
+
+  Future<void> refresh() async {
+    _initialized = false;
+    await _loadLikedQuotes();
   }
 }

@@ -165,9 +165,7 @@ class _QuoteDetailPagerScreenState
               onPageChanged: (i) {
                 setState(() {
                   _index = i;
-                  _actionsVisible = true;
                 });
-                _scheduleAutoHideActions();
               },
               itemBuilder: (context, index) {
                 final q = _quotes[index];
@@ -228,8 +226,50 @@ class _QuoteDetailPagerScreenState
                       _TopPillButton(
                         label: '닫기',
                         onPressed: () => Navigator.pop(context),
+                        backgroundColor: const Color(0x4DFFFFFF),
                       ),
                       const Spacer(),
+                      if (!isOwner && quote.type == QuoteType.malmoi)
+                        _TopPillButton(
+                          label: '신고',
+                          onPressed: () async {
+                            if (!isLoggedIn) {
+                              context.push('/login');
+                              return;
+                            }
+
+                            final messenger = ScaffoldMessenger.of(context);
+                            final reasonCode = await _pickReportReason(context);
+                            if (reasonCode == null) return;
+                            if (!context.mounted) return;
+
+                            try {
+                              final alreadyReported = await ref
+                                  .read(_interactionsRepoProvider)
+                                  .reportMalmoiOnce(
+                                    quoteId: quote.id,
+                                    reasonCode: reasonCode,
+                                  );
+                              if (!context.mounted) return;
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    alreadyReported
+                                        ? '이미 신고한 글입니다.'
+                                        : '신고가 접수되었습니다.',
+                                  ),
+                                ),
+                              );
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              messenger.showSnackBar(
+                                SnackBar(content: Text('신고 실패: $e')),
+                              );
+                            }
+                          },
+                        ),
+                      if (!isOwner && quote.type == QuoteType.malmoi)
+                        const SizedBox(width: 8),
                       if (showReactions)
                         _TopReactionButton(
                           quote: quote,
@@ -309,8 +349,8 @@ class _QuoteDetailPagerScreenState
                         ),
                       if (showReactions) const SizedBox(width: 8),
                       if (isOwner)
-                        IconButton(
-                          tooltip: '수정',
+                        _TopPillButton(
+                          label: '수정',
                           onPressed: () async {
                             final messenger = ScaffoldMessenger.of(context);
                             final updatedContent = await context.push<String>(
@@ -327,57 +367,53 @@ class _QuoteDetailPagerScreenState
                               const SnackBar(content: Text('수정되었습니다.')),
                             );
                           },
-                          icon: const Icon(
-                            Icons.edit_outlined,
-                            color: Colors.white,
-                          ),
                         ),
                       if (isOwner)
-                        IconButton(
-                          tooltip: '삭제',
-                          onPressed: () async {
-                            final messenger = ScaffoldMessenger.of(context);
-                            final ok = await showDialog<bool>(
-                              context: context,
-                              builder: (context) {
-                                return AlertDialog(
-                                  title: const Text('삭제할까요?'),
-                                  content: const Text('삭제하면 복구할 수 없습니다.'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, false),
-                                      child: const Text('취소'),
-                                    ),
-                                    FilledButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, true),
-                                      child: const Text('삭제'),
-                                    ),
-                                  ],
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: _TopPillButton(
+                            label: '삭제',
+                            textColor: const Color(0xFFFCA5A5),
+                            onPressed: () async {
+                              final messenger = ScaffoldMessenger.of(context);
+                              final ok = await showDialog<bool>(
+                                context: context,
+                                builder: (context) {
+                                  return AlertDialog(
+                                    title: const Text('삭제할까요?'),
+                                    content: const Text('삭제하면 복구할 수 없습니다.'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        child: const Text('취소'),
+                                      ),
+                                      FilledButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        child: const Text('삭제'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                              if (ok != true) return;
+                              try {
+                                await ref
+                                    .read(_quotesRepoProvider)
+                                    .deleteMalmoiPost(quoteId: quote.id);
+                                if (!context.mounted) return;
+                                messenger.showSnackBar(
+                                  const SnackBar(content: Text('삭제되었습니다.')),
                                 );
-                              },
-                            );
-                            if (ok != true) return;
-                            try {
-                              await ref
-                                  .read(_quotesRepoProvider)
-                                  .deleteMalmoiPost(quoteId: quote.id);
-                              if (!context.mounted) return;
-                              messenger.showSnackBar(
-                                const SnackBar(content: Text('삭제되었습니다.')),
-                              );
-                              Navigator.pop(context);
-                            } catch (e) {
-                              if (!context.mounted) return;
-                              messenger.showSnackBar(
-                                SnackBar(content: Text('삭제 실패: $e')),
-                              );
-                            }
-                          },
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            color: Color(0xFFFCA5A5),
+                                Navigator.pop(context);
+                              } catch (e) {
+                                if (!context.mounted) return;
+                                messenger.showSnackBar(
+                                  SnackBar(content: Text('삭제 실패: $e')),
+                                );
+                              }
+                            },
                           ),
                         ),
                     ],
@@ -413,7 +449,15 @@ class _QuoteDetailPagerScreenState
                               return;
                             }
 
-                            // Optimistic UI update
+                            if (isLiked) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('이미 좋아요한 글입니다.'),
+                                ),
+                              );
+                              return;
+                            }
+
                             ref
                                 .read(likedQuotesProvider.notifier)
                                 .markLiked(quote.id);
@@ -430,7 +474,6 @@ class _QuoteDetailPagerScreenState
                                   .likeQuoteOnce(quoteId: quote.id);
                               if (!context.mounted) return;
                               if (alreadyLiked) {
-                                // Rollback
                                 ref
                                     .read(likedQuotesProvider.notifier)
                                     .unmarkLiked(quote.id);
@@ -441,12 +484,12 @@ class _QuoteDetailPagerScreenState
                                 });
                                 messenger.showSnackBar(
                                   const SnackBar(
-                                      content: Text('이미 좋아요한 글입니다.')),
+                                    content: Text('이미 좋아요한 글입니다.'),
+                                  ),
                                 );
                               }
                             } catch (e) {
                               if (!context.mounted) return;
-                              // Rollback on error
                               ref
                                   .read(likedQuotesProvider.notifier)
                                   .unmarkLiked(quote.id);
@@ -466,8 +509,6 @@ class _QuoteDetailPagerScreenState
                               return;
                             }
 
-                            // Optimistic UI update (toggle current state)
-                            final currentlySaved = isSaved;
                             final controller =
                                 ref.read(savedQuotesControllerProvider);
 
@@ -482,7 +523,6 @@ class _QuoteDetailPagerScreenState
                               );
                             } catch (e) {
                               if (!context.mounted) return;
-                              // Rollback on error (toggle back)
                               await controller.toggleSave(quote);
                               messenger.showSnackBar(
                                 SnackBar(content: Text('담기 실패: $e')),
@@ -495,7 +535,8 @@ class _QuoteDetailPagerScreenState
                               return;
                             }
                             final messenger = ScaffoldMessenger.of(context);
-                            final author = quote.author.trim();
+                            final author =
+                                (quote.authorName ?? quote.author).trim();
                             final text = author.isEmpty
                                 ? quote.content
                                 : '${quote.content}\n\n- $author -';
@@ -521,45 +562,6 @@ class _QuoteDetailPagerScreenState
                               );
                             }
                           },
-                          onReport: (!isOwner && quote.type == QuoteType.malmoi)
-                              ? () async {
-                                  if (!isLoggedIn) {
-                                    context.push('/login');
-                                    return;
-                                  }
-
-                                  final messenger =
-                                      ScaffoldMessenger.of(context);
-                                  final reasonCode =
-                                      await _pickReportReason(context);
-                                  if (reasonCode == null) return;
-                                  if (!context.mounted) return;
-
-                                  try {
-                                    final alreadyReported = await ref
-                                        .read(_interactionsRepoProvider)
-                                        .reportMalmoiOnce(
-                                          quoteId: quote.id,
-                                          reasonCode: reasonCode,
-                                        );
-                                    if (!context.mounted) return;
-                                    messenger.showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          alreadyReported
-                                              ? '이미 신고한 글입니다.'
-                                              : '신고가 접수되었습니다.',
-                                        ),
-                                      ),
-                                    );
-                                  } catch (e) {
-                                    if (!context.mounted) return;
-                                    messenger.showSnackBar(
-                                      SnackBar(content: Text('신고 실패: $e')),
-                                    );
-                                  }
-                                }
-                              : null,
                         ),
                       ),
                     ),
@@ -579,11 +581,13 @@ class _TopPillButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final Color textColor;
+  final Color? backgroundColor;
 
   const _TopPillButton({
     required this.label,
     required this.onPressed,
     this.textColor = Colors.white,
+    this.backgroundColor,
   });
 
   @override
@@ -597,7 +601,7 @@ class _TopPillButton extends StatelessWidget {
           height: 44,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: const Color(0x1FFFFFFF),
+            color: backgroundColor ?? const Color(0x1FFFFFFF),
             borderRadius: BorderRadius.circular(999),
             border: Border.all(color: const Color(0x2EFFFFFF)),
             boxShadow: const [
@@ -629,7 +633,6 @@ class _TopReactionButton extends StatefulWidget {
   final Future<void> Function(ReactionType reaction, String assetPath) onReact;
 
   const _TopReactionButton({
-    super.key,
     required this.quote,
     required this.myReaction,
     required this.onReact,

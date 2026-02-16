@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/user_stats_repository.dart';
 
-final userStatsProvider = FutureProvider.autoDispose<UserStats>((ref) async {
+final userStatsProvider = StreamProvider.autoDispose<UserStats>((ref) {
   final repository = ref.watch(userStatsRepositoryProvider);
-  return repository.getUserStats();
+  return repository.watchUserStats();
 });

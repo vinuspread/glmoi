@@ -258,8 +258,53 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                       _TopPillButton(
                         label: '닫기',
                         onPressed: () => Navigator.pop(context),
+                        backgroundColor: const Color(0x4DFFFFFF),
                       ),
                       const Spacer(),
+                      if (!isOwner && quote.type == QuoteType.malmoi)
+                        _TopPillButton(
+                          label: '신고',
+                          onPressed: () async {
+                            final isLoggedIn = ref.read(authProvider);
+                            if (!isLoggedIn) {
+                              context.push('/login',
+                                  extra: const LoginRedirect.pop());
+                              return;
+                            }
+
+                            final messenger = ScaffoldMessenger.of(context);
+
+                            final reasonCode = await _pickReportReason(context);
+                            if (reasonCode == null) return;
+                            if (!mounted) return;
+
+                            try {
+                              final alreadyReported = await ref
+                                  .read(_interactionsRepoProvider)
+                                  .reportMalmoiOnce(
+                                    quoteId: quote.id,
+                                    reasonCode: reasonCode,
+                                  );
+                              if (!mounted) return;
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    alreadyReported
+                                        ? '이미 신고한 글입니다.'
+                                        : '신고가 접수되었습니다.',
+                                  ),
+                                ),
+                              );
+                            } catch (e) {
+                              if (!mounted) return;
+                              messenger.showSnackBar(
+                                SnackBar(content: Text('신고 실패: $e')),
+                              );
+                            }
+                          },
+                        ),
+                      if (!isOwner && quote.type == QuoteType.malmoi)
+                        const SizedBox(width: 8),
                       if (showReactions)
                         _TopReactionButton(
                           quote: quote,
@@ -450,7 +495,15 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                               return;
                             }
 
-                            // Optimistic UI update
+                            if (isLiked) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('이미 좋아요한 글입니다.'),
+                                ),
+                              );
+                              return;
+                            }
+
                             ref
                                 .read(likedQuotesProvider.notifier)
                                 .markLiked(quote.id);
@@ -467,7 +520,6 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                                   .likeQuoteOnce(quoteId: quote.id);
                               if (!mounted) return;
                               if (alreadyLiked) {
-                                // Rollback
                                 ref
                                     .read(likedQuotesProvider.notifier)
                                     .unmarkLiked(quote.id);
@@ -484,7 +536,6 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                               }
                             } catch (e) {
                               if (!mounted) return;
-                              // Rollback on error
                               ref
                                   .read(likedQuotesProvider.notifier)
                                   .unmarkLiked(quote.id);
@@ -536,7 +587,8 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                               return;
                             }
                             final messenger = ScaffoldMessenger.of(context);
-                            final author = quote.author.trim();
+                            final author =
+                                (quote.authorName ?? quote.author).trim();
                             final text = author.isEmpty
                                 ? quote.content
                                 : '${quote.content}\n\n- $author -';
@@ -554,50 +606,6 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                               );
                             }
                           },
-                          onReport: (!isOwner && quote.type == QuoteType.malmoi)
-                              ? () async {
-                                  final isLoggedIn = ref.read(authProvider);
-                                  if (!isLoggedIn) {
-                                    context.push('/login',
-                                        extra: const LoginRedirect.pop());
-                                    return;
-                                  }
-
-                                  final messenger =
-                                      ScaffoldMessenger.of(context);
-
-                                  final reasonCode =
-                                      await _pickReportReason(context);
-                                  if (reasonCode == null) return;
-                                  if (!mounted) return;
-
-                                  try {
-                                    final alreadyReported = await ref
-                                        .read(_interactionsRepoProvider)
-                                        .reportMalmoiOnce(
-                                          quoteId: quote.id,
-                                          reasonCode: reasonCode,
-                                        );
-                                    if (!mounted) return;
-                                    messenger.showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          alreadyReported
-                                              ? '이미 신고한 글입니다.'
-                                              : '신고가 접수되었습니다.',
-                                        ),
-                                      ),
-                                    );
-                                  } catch (e) {
-                                    if (!mounted) return;
-                                    messenger.showSnackBar(
-                                      SnackBar(
-                                        content: Text('신고 실패: $e'),
-                                      ),
-                                    );
-                                  }
-                                }
-                              : null,
                         ),
                       ),
                     ),
@@ -621,7 +629,6 @@ class QuoteDetailActionBar extends StatelessWidget {
   final Future<void> Function() onLike;
   final Future<void> Function() onSave;
   final Future<void> Function() onShare;
-  final Future<void> Function()? onReport;
 
   const QuoteDetailActionBar({
     super.key,
@@ -632,7 +639,6 @@ class QuoteDetailActionBar extends StatelessWidget {
     required this.onLike,
     required this.onSave,
     required this.onShare,
-    required this.onReport,
   });
 
   @override
@@ -645,6 +651,7 @@ class QuoteDetailActionBar extends StatelessWidget {
             child: OutlinedButton(
               onPressed: () => onLike(),
               style: OutlinedButton.styleFrom(
+                backgroundColor: const Color(0xCC000000),
                 side: const BorderSide(color: Color(0x33FFFFFF)),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
@@ -662,6 +669,7 @@ class QuoteDetailActionBar extends StatelessWidget {
             child: OutlinedButton(
               onPressed: () => onSave(),
               style: OutlinedButton.styleFrom(
+                backgroundColor: const Color(0xCC000000),
                 side: const BorderSide(color: Color(0x33FFFFFF)),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
@@ -691,26 +699,6 @@ class QuoteDetailActionBar extends StatelessWidget {
               ),
             ),
           ),
-          if (onReport != null) ...[
-            const SizedBox(width: 8),
-            OutlinedButton(
-              onPressed: () => onReport!(),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0x33FFFFFF)),
-                padding: const EdgeInsets.symmetric(
-                  vertical: 14,
-                  horizontal: 12,
-                ),
-              ),
-              child: const Text(
-                '신고',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -749,11 +737,13 @@ class _TopPillButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final Color textColor;
+  final Color? backgroundColor;
 
   const _TopPillButton({
     required this.label,
     required this.onPressed,
     this.textColor = Colors.white,
+    this.backgroundColor,
   });
 
   @override
@@ -767,7 +757,7 @@ class _TopPillButton extends StatelessWidget {
           height: 44,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: const Color(0x1FFFFFFF),
+            color: backgroundColor ?? const Color(0x1FFFFFFF),
             borderRadius: BorderRadius.circular(999),
             border: Border.all(color: const Color(0x2EFFFFFF)),
             boxShadow: const [
@@ -799,7 +789,7 @@ class _ShortFormContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final author = quote.author.trim();
+    final author = (quote.authorName ?? quote.author).trim();
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -838,7 +828,7 @@ class _LongFormContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final author = quote.author.trim();
+    final author = (quote.authorName ?? quote.author).trim();
     return Scrollbar(
       thumbVisibility: true,
       child: SingleChildScrollView(
@@ -878,7 +868,6 @@ class _TopReactionButton extends StatefulWidget {
   final Future<void> Function(ReactionType reaction) onReact;
 
   const _TopReactionButton({
-    super.key,
     required this.quote,
     required this.myReaction,
     required this.onReact,

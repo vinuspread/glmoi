@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/backend/functions_client.dart';
 import '../domain/quote.dart';
 
 final savedQuotesRepositoryProvider =
@@ -12,37 +13,28 @@ class SavedQuotesRepository {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   /// 담기 토글 (담겨있으면 취소, 없으면 담기)
+  /// Cloud Function을 통해 saved_quotes_count도 함께 업데이트
   Future<bool> toggleSaveQuote(Quote quote) async {
     final user = _auth.currentUser;
     if (user == null) {
       throw StateError('로그인이 필요합니다');
     }
 
-    final docRef = _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('saved_quotes')
-        .doc(quote.id);
+    final callable = FunctionsClient.instance.httpsCallable('toggleSaveQuote');
 
-    final doc = await docRef.get();
-
-    if (doc.exists) {
-      // 이미 담겨있음 → 삭제
-      await docRef.delete();
-      return false;
-    } else {
-      // 담기 (스냅샷 비정규화)
-      await docRef.set({
-        'quote_id': quote.id,
+    final result = await callable.call({
+      'quoteId': quote.id,
+      'quoteData': {
         'app_id': quote.appId,
         'type': quote.type.name,
         'content': quote.content,
         'author': quote.author,
         'image_url': quote.imageUrl,
-        'saved_at': FieldValue.serverTimestamp(),
-      });
-      return true;
-    }
+      }
+    });
+
+    final data = result.data as Map<String, dynamic>;
+    return data['saved'] == true;
   }
 
   /// 담은 글 목록 스트림

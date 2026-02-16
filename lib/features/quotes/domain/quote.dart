@@ -45,6 +45,8 @@ class Quote {
   final MalmoiLength malmoiLength;
   final String content;
   final String author;
+  final String? authorName;
+  final String? authorPhotoUrl;
   final String? imageUrl;
   final DateTime createdAt;
   final bool isUserPost;
@@ -67,6 +69,8 @@ class Quote {
     required this.malmoiLength,
     required this.content,
     required this.author,
+    this.authorName,
+    this.authorPhotoUrl,
     required this.imageUrl,
     required this.createdAt,
     required this.isUserPost,
@@ -82,6 +86,8 @@ class Quote {
   Quote copyWith({
     String? content,
     String? author,
+    String? authorName,
+    String? authorPhotoUrl,
     String? imageUrl,
     DateTime? createdAt,
     bool? isUserPost,
@@ -100,6 +106,8 @@ class Quote {
       malmoiLength: malmoiLength,
       content: content ?? this.content,
       author: author ?? this.author,
+      authorName: authorName ?? this.authorName,
+      authorPhotoUrl: authorPhotoUrl ?? this.authorPhotoUrl,
       imageUrl: imageUrl ?? this.imageUrl,
       createdAt: createdAt ?? this.createdAt,
       isUserPost: isUserPost ?? this.isUserPost,
@@ -145,6 +153,8 @@ class Quote {
           : MalmoiLength.short,
       content: (data['content'] as String?) ?? '',
       author: (data['author'] as String?) ?? '',
+      authorName: data['author_name'] as String?,
+      authorPhotoUrl: data['author_photo_url'] as String?,
       imageUrl: data['image_url'] as String?,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isUserPost: (data['is_user_post'] as bool?) ?? false,

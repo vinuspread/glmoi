@@ -140,10 +140,12 @@ class QuoteFeedCard extends ConsumerWidget {
                             height: 1.55,
                           ),
                         ),
-                        if (quote.author.trim().isNotEmpty) ...[
+                        if ((quote.authorName ?? quote.author)
+                            .trim()
+                            .isNotEmpty) ...[
                           const SizedBox(height: 10),
                           Text(
-                            quote.author,
+                            quote.authorName ?? quote.author,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: t.textTheme.bodyMedium?.copyWith(

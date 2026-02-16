@@ -184,7 +184,9 @@ class MyPageScreen extends ConsumerWidget {
                           icon: Icons.favorite,
                           label: '좋아요',
                           count: stats.likedQuotesCount,
-                          onTap: null,
+                          onTap: () {
+                            context.push('/liked-quotes');
+                          },
                         ),
                         const SizedBox(height: 20),
                         const Divider(),

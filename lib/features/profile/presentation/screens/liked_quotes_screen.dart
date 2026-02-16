@@ -5,23 +5,23 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/ads/ads_controller.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../quotes/domain/quote.dart';
-import '../../../quotes/presentation/saved_quotes_provider.dart';
+import '../../../quotes/presentation/liked_quotes_list_provider.dart';
 import '../../../quotes/presentation/feed/widgets/quote_feed_card.dart';
 
-class SavedQuotesScreen extends ConsumerWidget {
-  const SavedQuotesScreen({super.key});
+class LikedQuotesScreen extends ConsumerWidget {
+  const LikedQuotesScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final savedQuotesAsync = ref.watch(savedQuotesProvider);
+    final likedQuotesAsync = ref.watch(likedQuotesListProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('담은 글'),
+        title: const Text('좋아요 누른 글'),
         centerTitle: true,
       ),
-      body: savedQuotesAsync.when(
+      body: likedQuotesAsync.when(
         data: (snapshots) {
           if (snapshots.isEmpty) {
             return Center(
@@ -29,13 +29,13 @@ class SavedQuotesScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.bookmark_border,
+                    Icons.favorite_border,
                     size: 64,
                     color: AppTheme.textSecondary.withOpacity(0.5),
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    '담은 글이 없습니다.',
+                    '좋아요 누른 글이 없습니다.',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: AppTheme.textSecondary,
                           fontWeight: FontWeight.w600,
@@ -52,7 +52,6 @@ class SavedQuotesScreen extends ConsumerWidget {
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final snapshot = snapshots[index];
-              // Convert SavedQuoteSnapshot to Quote for QuoteFeedCard
               final quote = Quote(
                 id: snapshot.quoteId,
                 appId: snapshot.appId,
@@ -60,8 +59,10 @@ class SavedQuotesScreen extends ConsumerWidget {
                 malmoiLength: MalmoiLength.short,
                 content: snapshot.content,
                 author: snapshot.author,
+                authorName: snapshot.authorName,
+                authorPhotoUrl: snapshot.authorPhotoUrl,
                 imageUrl: snapshot.imageUrl,
-                createdAt: snapshot.savedAt ?? DateTime.now(),
+                createdAt: snapshot.likedAt ?? DateTime.now(),
                 isUserPost: false,
                 likeCount: 0,
                 shareCount: 0,
@@ -95,7 +96,7 @@ class SavedQuotesScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                '담은 글을 불러오지 못했습니다.',
+                '좋아요 누른 글을 불러오지 못했습니다.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: AppTheme.textSecondary,
                       fontWeight: FontWeight.w600,

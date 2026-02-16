@@ -1,108 +1,80 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/data/repositories/config_repository.dart';
+import '../../../../core/data/models/config_model.dart';
 
-class CompanyInfoScreen extends StatelessWidget {
+// ✅ Provider를 전역으로 정의 (무한 로딩 버그 수정)
+final companyInfoProvider = StreamProvider<CompanyInfoModel>((ref) {
+  return ref.watch(configRepositoryProvider).getCompanyInfoConfig();
+});
+
+class CompanyInfoScreen extends ConsumerWidget {
   const CompanyInfoScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final companyInfoAsync = ref.watch(companyInfoProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('회사소개'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Container(
-          decoration: AppTheme.cardDecoration(elevated: true),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Text(
-                  '글모이',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.accent,
-                      ),
-                ),
+      body: companyInfoAsync.when(
+        data: (companyInfo) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Container(
+              decoration: AppTheme.cardDecoration(elevated: true),
+              padding: const EdgeInsets.all(20),
+              child: Text(
+                companyInfo.content.isNotEmpty
+                    ? companyInfo.content
+                    : '회사소개 정보가 아직 등록되지 않았습니다.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      height: 1.8,
+                      color: companyInfo.content.isNotEmpty
+                          ? AppTheme.textPrimary
+                          : AppTheme.textSecondary,
+                    ),
               ),
-              const SizedBox(height: 8),
-              Center(
-                child: Text(
-                  '누구나 작가가 될 수 있는 공간',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.textSecondary,
-                      ),
-                  textAlign: TextAlign.center,
-                ),
+            ),
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) {
+          print('ERROR in company_info_screen: $error');
+          print('STACK: $stack');
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    '회사소개를 불러올 수 없습니다.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '$error',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 32),
-              _InfoRow(
-                label: '회사명',
-                value: '(주)비누스',
-              ),
-              const SizedBox(height: 12),
-              _InfoRow(
-                label: '대표자',
-                value: '한성영',
-              ),
-              const SizedBox(height: 12),
-              _InfoRow(
-                label: '사업자등록번호',
-                value: '123-45-67890',
-              ),
-              const SizedBox(height: 12),
-              _InfoRow(
-                label: '주소',
-                value: '서울특별시 강남구',
-              ),
-              const SizedBox(height: 12),
-              _InfoRow(
-                label: '이메일',
-                value: 'vinus@vinus.co.kr',
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _InfoRow({
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 100,
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

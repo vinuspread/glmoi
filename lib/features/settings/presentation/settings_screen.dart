@@ -5,6 +5,7 @@ import '../../../core/auth/auth_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/font_scale_provider.dart';
 import '../../../core/backend/functions_client.dart';
+import '../../../core/config/app_config_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -13,6 +14,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isLoggedIn = ref.watch(authProvider);
     final currentFontScale = ref.watch(fontScaleProvider);
+    final appConfigAsync = ref.watch(appConfigProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -160,12 +162,23 @@ class SettingsScreen extends ConsumerWidget {
             title: '이용약관',
             onTap: () => context.push('/settings/terms'),
           ),
-          const _SettingsTile(
+          _SettingsTile(
             icon: Icons.info_outline,
             title: '버전 정보',
-            trailing: Text(
-              '1.0.0',
-              style: TextStyle(color: AppTheme.textSecondary),
+            trailing: appConfigAsync.when(
+              data: (config) => Text(
+                config.latestVersion,
+                style: const TextStyle(color: AppTheme.textSecondary),
+              ),
+              loading: () => const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              error: (_, __) => const Text(
+                '1.0.0',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
             ),
           ),
         ],
