@@ -6,7 +6,7 @@
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         <!-- AdMob App ID -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
@@ -48,6 +48,15 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:host="oauth"
+                      android:scheme="kakaoc113b598f60db67366a6d48caa459b74" />
+            </intent-filter>
+            
+            <!-- Kakao Link Scheme -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:host="kakaolink"
                       android:scheme="kakaoc113b598f60db67366a6d48caa459b74" />
             </intent-filter>
             <!-- Specifies an Android theme to apply to this Activity as soon as

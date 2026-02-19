@@ -38,11 +38,11 @@ android {
             dimension = "env"
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
-            resValue("string", "app_name", "Glmoi Dev")
+            resValue("string", "app_name", "글모이 Dev")
         }
         create("prod") {
             dimension = "env"
-            resValue("string", "app_name", "Glmoi")
+            resValue("string", "app_name", "글모이")
         }
     }
 
