@@ -3,11 +3,17 @@ import 'package:glmoi/core/theme/app_theme.dart';
 import 'package:glmoi/core/widgets/feed_header_buttons.dart';
 import 'package:glmoi/features/detail/presentation/screens/detail_screen.dart';
 import 'package:glmoi/features/list/presentation/widgets/text_curation_card.dart';
+import 'package:glmoi/features/list/presentation/widgets/text_curation_list_item.dart';
 
 class FeedScreen extends StatelessWidget {
   final String title;
+  final bool isListView;
 
-  const FeedScreen({super.key, required this.title});
+  const FeedScreen({
+    super.key, 
+    required this.title,
+    this.isListView = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -24,10 +30,25 @@ class FeedScreen extends StatelessWidget {
         ],
       ),
       body: ListView.separated(
-        padding: const EdgeInsets.all(20),
+        padding: isListView ? EdgeInsets.zero : const EdgeInsets.all(20),
         itemCount: 10, // Dummy count
-        separatorBuilder: (context, index) => const SizedBox(height: 16),
+        separatorBuilder: (context, index) => isListView 
+            ? const Divider(height: 1, thickness: 1, color: AppTheme.border)
+            : const SizedBox(height: 16),
         itemBuilder: (context, index) {
+          if (isListView) {
+            return TextCurationListItem(
+              content: "삶이 있는 한 희망은 있다 - 키케로\n두 번째 줄 테스트 텍스트입니다.",
+              author: "키케로 $index",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => DetailScreen(initialIndex: index)),
+                );
+              },
+            );
+          }
           return TextCurationCard(
             // Dummy data
             content: "삶이 있는 한 희망은 있다 - 키케로\n두 번째 줄 테스트 텍스트입니다.",

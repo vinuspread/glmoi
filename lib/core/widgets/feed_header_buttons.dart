@@ -64,22 +64,22 @@ class _RoundTextButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppTheme.radius24), // More rounded
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6), // Reduced height
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AppTheme.radius24),
           border: Border.all(
-            color: AppTheme.border.withAlpha(128),
+            color: AppTheme.border, // Use solid border color
             width: 1,
           ),
         ),
         child: Text(
           label,
           style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+            fontSize: 15, // Slightly larger text
+            fontWeight: FontWeight.w700,
             color: AppTheme.textPrimary,
           ),
         ),
@@ -102,15 +102,15 @@ class _ProfileImageButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppTheme.radius24),
       child: Container(
-        width: 40,
-        height: 40,
+        width: 44, // Larger size 40 -> 44
+        height: 44,
         decoration: BoxDecoration(
           color: Colors.white,
           shape: BoxShape.circle,
           border: Border.all(
-            color: AppTheme.border.withAlpha(128),
+            color: AppTheme.border,
             width: 1,
           ),
         ),

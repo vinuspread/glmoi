@@ -14,7 +14,7 @@ class ContentText extends ConsumerWidget {
     this.content, {
     super.key,
     this.textAlign,
-    this.baseFontSize = 24,
+    this.baseFontSize = 28,
     this.height,
     this.fontWeight,
     this.color,

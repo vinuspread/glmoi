@@ -12,18 +12,13 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = [
-    const FeedScreen(title: '인기글'),
-    const FeedScreen(title: '한줄명언'),
-    const FeedScreen(title: '좋은생각'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: _screens,
+        children: const [
+          FeedScreen(title: '인기글'),
+          FeedScreen(title: '한줄명언'),
+          FeedScreen(title: '좋은생각', isListView: true),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

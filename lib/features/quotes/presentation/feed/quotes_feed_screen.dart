@@ -11,6 +11,7 @@ import '../../data/quotes_repository.dart';
 import '../../domain/quote.dart';
 import '../detail/quote_detail_args.dart';
 import 'widgets/quote_feed_card.dart';
+import 'widgets/quote_list_tile.dart';
 
 final _quotesRepoProvider = Provider((ref) => QuotesRepository());
 
@@ -44,7 +45,7 @@ class QuotesFeedScreen extends ConsumerWidget {
         ],
       ),
       floatingActionButton: type == QuoteType.malmoi
-          ? FloatingActionButton.extended(
+          ? FloatingActionButton(
               onPressed: () {
                 if (!isLoggedIn) {
                   context.push('/login',
@@ -53,8 +54,8 @@ class QuotesFeedScreen extends ConsumerWidget {
                 }
                 context.push('/malmoi/write');
               },
-              icon: const Icon(Icons.edit),
-              label: const Text('글 작성'),
+              child: const Icon(Icons.edit),
+              shape: const CircleBorder(),
             )
           : null,
       body: quotesAsync.when(
@@ -85,27 +86,24 @@ class QuotesFeedScreen extends ConsumerWidget {
             );
           }
 
-          return Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFFFAF7F2),
-                  Color(0xFFF7F2EA),
-                ],
-              ),
-            ),
-            child: ListView.separated(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-              itemCount: quotes.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, i) {
-                final q = quotes[i];
-                return QuoteFeedCard(
+          final isListMode = type == QuoteType.thought || type == QuoteType.malmoi;
+
+          return ListView.separated(
+            physics: const BouncingScrollPhysics(),
+            padding: isListMode 
+                ? EdgeInsets.zero 
+                : const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            itemCount: quotes.length,
+            separatorBuilder: (_, __) => isListMode
+                ? const Divider(height: 1, thickness: 1, color: Color(0xFFF5F5F5))
+                : const SizedBox(height: 16),
+            itemBuilder: (context, i) {
+              final q = quotes[i];
+              
+              if (isListMode) {
+                return QuoteListTile(
                   quote: q,
-                  onOpenDetail: () async {
+                  onTap: () async {
                     await ref.read(adsControllerProvider).onOpenDetail();
                     if (!context.mounted) return;
                     context.push(
@@ -114,8 +112,20 @@ class QuotesFeedScreen extends ConsumerWidget {
                     );
                   },
                 );
-              },
-            ),
+              }
+
+              return QuoteFeedCard(
+                quote: q,
+                onOpenDetail: () async {
+                  await ref.read(adsControllerProvider).onOpenDetail();
+                  if (!context.mounted) return;
+                  context.push(
+                    '/detail',
+                    extra: QuoteDetailArgs(quotes: quotes, initialIndex: i),
+                  );
+                },
+              );
+            },
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),

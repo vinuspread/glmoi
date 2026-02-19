@@ -78,7 +78,7 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
 
     await SharePlus.instance.share(
       ShareParams(
-        text: '마음소리에서 보냄',
+        text: '좋은 글 모음',
         files: [XFile(imagePath.path)],
       ),
     );
