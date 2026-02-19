@@ -9,6 +9,8 @@ class AdService {
   String _interstitialUnitId = '';
   var _loadingInterstitial = false;
   var _navCount = 0;
+  var _postCount = 0;
+  var _shareCount = 0;
 
   Future<void> ensureInitialized() async {
     if (_initialized) return;
@@ -74,8 +76,9 @@ class AdService {
 
   Future<void> maybeShowInterstitialForNavigation(AdConfig config) async {
     if (!config.isInterstitialEnabled) return;
+    if (!config.triggerOnNavigation) return;
 
-    final freq = config.interstitialFrequency;
+    final freq = config.navigationFrequency;
     if (freq <= 0) return;
 
     final unitId = config.interstitialUnitIdForPlatform();
@@ -88,6 +91,70 @@ class AdService {
 
     final shouldShow = _navCount % freq == 0;
     if (!shouldShow) return;
+
+    final ad = _interstitial;
+    if (ad == null) return;
+
+    _interstitial = null;
+    ad.show();
+  }
+
+  Future<void> maybeShowInterstitialForPost(AdConfig config) async {
+    if (!config.isInterstitialEnabled) return;
+    if (!config.triggerOnPost) return;
+
+    final freq = config.postFrequency;
+    if (freq <= 0) return;
+
+    final unitId = config.interstitialUnitIdForPlatform();
+    if (unitId.isEmpty) return;
+
+    _postCount += 1;
+
+    await _loadInterstitial(unitId);
+
+    final shouldShow = _postCount % freq == 0;
+    if (!shouldShow) return;
+
+    final ad = _interstitial;
+    if (ad == null) return;
+
+    _interstitial = null;
+    ad.show();
+  }
+
+  Future<void> maybeShowInterstitialForShare(AdConfig config) async {
+    if (!config.isInterstitialEnabled) return;
+    if (!config.triggerOnShare) return;
+
+    final freq = config.shareFrequency;
+    if (freq <= 0) return;
+
+    final unitId = config.interstitialUnitIdForPlatform();
+    if (unitId.isEmpty) return;
+
+    _shareCount += 1;
+
+    await _loadInterstitial(unitId);
+
+    final shouldShow = _shareCount % freq == 0;
+    if (!shouldShow) return;
+
+    final ad = _interstitial;
+    if (ad == null) return;
+
+    _interstitial = null;
+    ad.show();
+  }
+
+  Future<void> maybeShowInterstitialForExit(AdConfig config) async {
+    if (!config.isInterstitialEnabled) return;
+    if (!config.triggerOnExit) return;
+
+    final unitId = config.interstitialUnitIdForPlatform();
+    if (unitId.isEmpty) return;
+
+    await _loadInterstitial(unitId);
 
     final ad = _interstitial;
     if (ad == null) return;

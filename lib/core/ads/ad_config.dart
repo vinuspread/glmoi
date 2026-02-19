@@ -10,6 +10,15 @@ class AdConfig {
   final String interstitialAndroidUnitId;
   final String interstitialIosUnitId;
 
+  // 트리거 조건별 설정
+  final bool triggerOnNavigation;
+  final int navigationFrequency;
+  final bool triggerOnPost;
+  final int postFrequency;
+  final bool triggerOnShare;
+  final int shareFrequency;
+  final bool triggerOnExit;
+
   const AdConfig({
     this.isBannerEnabled = true,
     this.isInterstitialEnabled = true,
@@ -18,6 +27,13 @@ class AdConfig {
     this.bannerIosUnitId = '',
     this.interstitialAndroidUnitId = '',
     this.interstitialIosUnitId = '',
+    this.triggerOnNavigation = true,
+    this.navigationFrequency = 15,
+    this.triggerOnPost = false,
+    this.postFrequency = 5,
+    this.triggerOnShare = false,
+    this.shareFrequency = 3,
+    this.triggerOnExit = false,
   });
 
   factory AdConfig.fromMap(Map<String, dynamic> map) {
@@ -32,6 +48,14 @@ class AdConfig {
       interstitialAndroidUnitId:
           (map['interstitial_android_unit_id'] as String?) ?? '',
       interstitialIosUnitId: (map['interstitial_ios_unit_id'] as String?) ?? '',
+      // 트리거 조건 파싱
+      triggerOnNavigation: map['trigger_on_navigation'] ?? true,
+      navigationFrequency: (map['navigation_frequency'] as num?)?.toInt() ?? 15,
+      triggerOnPost: map['trigger_on_post'] ?? false,
+      postFrequency: (map['post_frequency'] as num?)?.toInt() ?? 5,
+      triggerOnShare: map['trigger_on_share'] ?? false,
+      shareFrequency: (map['share_frequency'] as num?)?.toInt() ?? 3,
+      triggerOnExit: map['trigger_on_exit'] ?? false,
     );
   }
 
