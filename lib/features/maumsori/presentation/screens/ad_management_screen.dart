@@ -18,8 +18,16 @@ class AdManagementScreen extends ConsumerStatefulWidget {
 class _AdManagementScreenState extends ConsumerState<AdManagementScreen> {
   // 로컬 상태 (저장 전 변경사항 관리) -> Stream 데이터를 받아서 초기화 필요
   bool? _isInterstitialEnabled;
-  int? _frequency;
   bool? _isBannerEnabled;
+
+  // 트리거 조건별 상태
+  bool? _triggerOnNavigation;
+  int? _navigationFrequency;
+  bool? _triggerOnPost;
+  int? _postFrequency;
+  bool? _triggerOnShare;
+  int? _shareFrequency;
+  bool? _triggerOnExit;
 
   final _bannerAndroidUnitIdController = TextEditingController();
   final _bannerIosUnitIdController = TextEditingController();
@@ -58,7 +66,13 @@ class _AdManagementScreenState extends ConsumerState<AdManagementScreen> {
                         // 데이터가 로드되면 로컬 상태 초기화 (최초 1회 또는 외부 변경 시)
                         if (_isInterstitialEnabled == null) {
                           _isInterstitialEnabled = config.isInterstitialEnabled;
-                          _frequency = config.interstitialFrequency;
+                          _navigationFrequency = config.navigationFrequency;
+                          _triggerOnNavigation = config.triggerOnNavigation;
+                          _triggerOnPost = config.triggerOnPost;
+                          _postFrequency = config.postFrequency;
+                          _triggerOnShare = config.triggerOnShare;
+                          _shareFrequency = config.shareFrequency;
+                          _triggerOnExit = config.triggerOnExit;
                           _isBannerEnabled = config.isBannerEnabled;
 
                           _bannerAndroidUnitIdController.text =
@@ -186,27 +200,80 @@ class _AdManagementScreenState extends ConsumerState<AdManagementScreen> {
                                         fontSize: 12,
                                       ),
                                     ),
+                                    // 트리거 조건은 별도 섹션으로 분리
+                                  ],
+                                ),
+                              ),
+                              AdSectionCard(
+                                title: '전면 광고 트리거 조건',
+                                description: '어떤 상황에서 전면 광고를 노출할지 설정합니다.',
+                                child: Column(
+                                  children: [
+                                    _buildTriggerSection(
+                                      title: '화면 이동 횟수',
+                                      description:
+                                          '사용자가 상세 화면을 N번 열 때마다 광고를 표시합니다.',
+                                      value: _triggerOnNavigation ?? true,
+                                      onChanged: (val) => setState(
+                                        () => _triggerOnNavigation = val,
+                                      ),
+                                      frequency: _navigationFrequency ?? 15,
+                                      onFrequencyChanged: (val) => setState(
+                                        () => _navigationFrequency = val,
+                                      ),
+                                      frequencyOptions: const [
+                                        10,
+                                        15,
+                                        20,
+                                        25,
+                                        30,
+                                        35,
+                                        40,
+                                      ],
+                                    ),
                                     const Divider(height: 32),
-                                    ListTile(
-                                      title: Text(
-                                        '광고 노출 빈도: ${_frequency ?? 5}회마다',
+                                    _buildTriggerSection(
+                                      title: '글 작성 후',
+                                      description:
+                                          '사용자가 글을 N번 작성할 때마다 광고를 표시합니다.',
+                                      value: _triggerOnPost ?? false,
+                                      onChanged: (val) =>
+                                          setState(() => _triggerOnPost = val),
+                                      frequency: _postFrequency ?? 5,
+                                      onFrequencyChanged: (val) =>
+                                          setState(() => _postFrequency = val),
+                                      frequencyOptions: const [3, 5, 8, 10],
+                                    ),
+                                    const Divider(height: 32),
+                                    _buildTriggerSection(
+                                      title: '글 공유 후',
+                                      description:
+                                          '사용자가 글을 N번 공유할 때마다 광고를 표시합니다.',
+                                      value: _triggerOnShare ?? false,
+                                      onChanged: (val) =>
+                                          setState(() => _triggerOnShare = val),
+                                      frequency: _shareFrequency ?? 3,
+                                      onFrequencyChanged: (val) =>
+                                          setState(() => _shareFrequency = val),
+                                      frequencyOptions: const [3, 5, 8, 10],
+                                    ),
+                                    const Divider(height: 32),
+                                    SwitchListTile(
+                                      title: const Text(
+                                        '앱 종료 시',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                       subtitle: const Text(
-                                        '사용자가 화면을 N번 이동할 때마다 광고를 노출합니다.',
+                                        '사용자가 앱을 종료할 때마다 광고를 표시합니다.',
                                       ),
-                                    ),
-                                    Slider(
-                                      value: (_frequency ?? 5).toDouble(),
-                                      min: 1,
-                                      max: 20,
-                                      divisions: 19,
-                                      label: '${_frequency ?? 5}회',
-                                      activeColor: AppTheme.primaryPurple,
-                                      onChanged: (val) {
-                                        setState(() {
-                                          _frequency = val.round();
-                                        });
-                                      },
+                                      value: _triggerOnExit ?? false,
+                                      onChanged: (val) =>
+                                          setState(() => _triggerOnExit = val),
+                                      activeThumbColor: AppTheme.primaryPurple,
+                                      activeTrackColor: AppTheme.primaryPurple
+                                          .withValues(alpha: 0.35),
                                     ),
                                   ],
                                 ),
@@ -249,13 +316,19 @@ class _AdManagementScreenState extends ConsumerState<AdManagementScreen> {
     try {
       final newConfig = AdConfigModel(
         isInterstitialEnabled: _isInterstitialEnabled ?? true,
-        interstitialFrequency: _frequency ?? 5,
         isBannerEnabled: _isBannerEnabled ?? true,
         bannerAndroidUnitId: _bannerAndroidUnitIdController.text.trim(),
         bannerIosUnitId: _bannerIosUnitIdController.text.trim(),
         interstitialAndroidUnitId: _interstitialAndroidUnitIdController.text
             .trim(),
         interstitialIosUnitId: _interstitialIosUnitIdController.text.trim(),
+        triggerOnNavigation: _triggerOnNavigation ?? true,
+        navigationFrequency: _navigationFrequency ?? 15,
+        triggerOnPost: _triggerOnPost ?? false,
+        postFrequency: _postFrequency ?? 5,
+        triggerOnShare: _triggerOnShare ?? false,
+        shareFrequency: _shareFrequency ?? 3,
+        triggerOnExit: _triggerOnExit ?? false,
       );
 
       await ref.read(configControllerProvider).updateAdConfig(newConfig);
@@ -276,5 +349,74 @@ class _AdManagementScreenState extends ConsumerState<AdManagementScreen> {
         setState(() => _isSaving = false);
       }
     }
+  }
+
+  Widget _buildTriggerSection({
+    required String title,
+    required String description,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    required int frequency,
+    required ValueChanged<int> onFrequencyChanged,
+    required List<int> frequencyOptions,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SwitchListTile(
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(description),
+          value: value,
+          onChanged: onChanged,
+          activeThumbColor: AppTheme.primaryPurple,
+          activeTrackColor: AppTheme.primaryPurple.withValues(alpha: 0.35),
+        ),
+        if (value) ...[
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '노출 빈도: $frequency회마다',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: frequencyOptions.map((option) {
+                    final isSelected = frequency == option;
+                    return ChoiceChip(
+                      label: Text('$option회'),
+                      selected: isSelected,
+                      onSelected: (_) => onFrequencyChanged(option),
+                      selectedColor: AppTheme.primaryPurple.withValues(
+                        alpha: 0.2,
+                      ),
+                      labelStyle: TextStyle(
+                        color: isSelected
+                            ? AppTheme.primaryPurple
+                            : Colors.black87,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }
