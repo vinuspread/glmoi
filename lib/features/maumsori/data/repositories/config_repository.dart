@@ -11,40 +11,77 @@ class ConfigRepository {
   final String _docAd = 'ad_config';
   final String _docApp = 'app_config';
   final String _docTerms = 'terms_config';
+  final String _docCompanyInfo = 'company_info';
 
   // --- Ad Config ---
   Stream<AdConfigModel> getAdConfig() {
-    return _firestore.collection(_collectionPath).doc(_docAd).snapshots().map((doc) {
+    return _firestore.collection(_collectionPath).doc(_docAd).snapshots().map((
+      doc,
+    ) {
       if (!doc.exists || doc.data() == null) return AdConfigModel();
       return AdConfigModel.fromMap(doc.data()!);
     });
   }
 
   Future<void> updateAdConfig(AdConfigModel config) async {
-    await _firestore.collection(_collectionPath).doc(_docAd).set(config.toMap(), SetOptions(merge: true));
+    await _firestore
+        .collection(_collectionPath)
+        .doc(_docAd)
+        .set(config.toMap(), SetOptions(merge: true));
   }
 
   // --- App Config ---
   Stream<AppConfigModel> getAppConfig() {
-    return _firestore.collection(_collectionPath).doc(_docApp).snapshots().map((doc) {
+    return _firestore.collection(_collectionPath).doc(_docApp).snapshots().map((
+      doc,
+    ) {
       if (!doc.exists || doc.data() == null) return AppConfigModel();
       return AppConfigModel.fromMap(doc.data()!);
     });
   }
 
   Future<void> updateAppConfig(AppConfigModel config) async {
-    await _firestore.collection(_collectionPath).doc(_docApp).set(config.toMap(), SetOptions(merge: true));
+    await _firestore
+        .collection(_collectionPath)
+        .doc(_docApp)
+        .set(config.toMap(), SetOptions(merge: true));
   }
 
   // --- Terms Config ---
   Stream<TermsConfigModel> getTermsConfig() {
-    return _firestore.collection(_collectionPath).doc(_docTerms).snapshots().map((doc) {
-      if (!doc.exists || doc.data() == null) return TermsConfigModel();
-      return TermsConfigModel.fromMap(doc.data()!);
-    });
+    return _firestore
+        .collection(_collectionPath)
+        .doc(_docTerms)
+        .snapshots()
+        .map((doc) {
+          if (!doc.exists || doc.data() == null) return TermsConfigModel();
+          return TermsConfigModel.fromMap(doc.data()!);
+        });
   }
 
   Future<void> updateTermsConfig(TermsConfigModel config) async {
-    await _firestore.collection(_collectionPath).doc(_docTerms).set(config.toMap(), SetOptions(merge: true));
+    await _firestore
+        .collection(_collectionPath)
+        .doc(_docTerms)
+        .set(config.toMap(), SetOptions(merge: true));
+  }
+
+  // --- Company Info Config ---
+  Stream<CompanyInfoModel> getCompanyInfoConfig() {
+    return _firestore
+        .collection(_collectionPath)
+        .doc(_docCompanyInfo)
+        .snapshots()
+        .map((doc) {
+          if (!doc.exists || doc.data() == null) return CompanyInfoModel();
+          return CompanyInfoModel.fromMap(doc.data()!);
+        });
+  }
+
+  Future<void> updateCompanyInfoConfig(CompanyInfoModel config) async {
+    await _firestore
+        .collection(_collectionPath)
+        .doc(_docCompanyInfo)
+        .set(config.toMap(), SetOptions(merge: true));
   }
 }

@@ -17,6 +17,11 @@ final termsConfigProvider = StreamProvider<TermsConfigModel>((ref) {
   return ref.watch(configRepositoryProvider).getTermsConfig();
 });
 
+// --- Company Info Config ---
+final companyInfoConfigProvider = StreamProvider<CompanyInfoModel>((ref) {
+  return ref.watch(configRepositoryProvider).getCompanyInfoConfig();
+});
+
 // --- Controller ---
 final configControllerProvider = Provider((ref) => ConfigController(ref));
 
@@ -35,5 +40,9 @@ class ConfigController {
 
   Future<void> updateTermsConfig(TermsConfigModel config) async {
     await _ref.read(configRepositoryProvider).updateTermsConfig(config);
+  }
+
+  Future<void> updateCompanyInfoConfig(CompanyInfoModel config) async {
+    await _ref.read(configRepositoryProvider).updateCompanyInfoConfig(config);
   }
 }

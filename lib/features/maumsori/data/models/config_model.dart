@@ -1,7 +1,6 @@
 class AdConfigModel {
   // Legacy key: is_ad_enabled (kept for backward compatibility)
   final bool isInterstitialEnabled;
-  final int interstitialFrequency; // 전면 광고 노출 빈도 (N회 마다)
 
   // Banner (bottom fixed)
   final bool isBannerEnabled;
@@ -12,40 +11,78 @@ class AdConfigModel {
   final String interstitialAndroidUnitId;
   final String interstitialIosUnitId;
 
+  // 트리거 조건별 설정
+  final bool triggerOnNavigation;
+  final int navigationFrequency; // 화면 이동 N회마다
+
+  final bool triggerOnPost;
+  final int postFrequency; // 글 작성 N회마다
+
+  final bool triggerOnShare;
+  final int shareFrequency; // 공유 N회마다
+
+  final bool triggerOnExit; // 앱 종료 시
+
   AdConfigModel({
     this.isInterstitialEnabled = true,
-    this.interstitialFrequency = 5,
     this.isBannerEnabled = true,
     this.bannerAndroidUnitId = '',
     this.bannerIosUnitId = '',
     this.interstitialAndroidUnitId = '',
     this.interstitialIosUnitId = '',
+    this.triggerOnNavigation = true,
+    this.navigationFrequency = 15,
+    this.triggerOnPost = false,
+    this.postFrequency = 5,
+    this.triggerOnShare = false,
+    this.shareFrequency = 3,
+    this.triggerOnExit = false,
   });
 
   bool get isAdEnabled => isInterstitialEnabled;
 
+  // Legacy: 하위 호환성을 위해 유지
+  int get interstitialFrequency => navigationFrequency;
+
   factory AdConfigModel.fromMap(Map<String, dynamic> map) {
     return AdConfigModel(
       isInterstitialEnabled: map['is_ad_enabled'] ?? true,
-      interstitialFrequency: map['interstitial_frequency'] ?? 5,
       isBannerEnabled: map['is_banner_enabled'] ?? true,
       bannerAndroidUnitId: (map['banner_android_unit_id'] as String?) ?? '',
       bannerIosUnitId: (map['banner_ios_unit_id'] as String?) ?? '',
       interstitialAndroidUnitId:
           (map['interstitial_android_unit_id'] as String?) ?? '',
       interstitialIosUnitId: (map['interstitial_ios_unit_id'] as String?) ?? '',
+      triggerOnNavigation: map['trigger_on_navigation'] ?? true,
+      navigationFrequency:
+          (map['navigation_frequency'] as num?)?.toInt() ??
+          (map['interstitial_frequency'] as num?)?.toInt() ??
+          15, // 하위 호환
+      triggerOnPost: map['trigger_on_post'] ?? false,
+      postFrequency: (map['post_frequency'] as num?)?.toInt() ?? 5,
+      triggerOnShare: map['trigger_on_share'] ?? false,
+      shareFrequency: (map['share_frequency'] as num?)?.toInt() ?? 3,
+      triggerOnExit: map['trigger_on_exit'] ?? false,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
       'is_ad_enabled': isInterstitialEnabled,
-      'interstitial_frequency': interstitialFrequency,
       'is_banner_enabled': isBannerEnabled,
       'banner_android_unit_id': bannerAndroidUnitId,
       'banner_ios_unit_id': bannerIosUnitId,
       'interstitial_android_unit_id': interstitialAndroidUnitId,
       'interstitial_ios_unit_id': interstitialIosUnitId,
+      'trigger_on_navigation': triggerOnNavigation,
+      'navigation_frequency': navigationFrequency,
+      'trigger_on_post': triggerOnPost,
+      'post_frequency': postFrequency,
+      'trigger_on_share': triggerOnShare,
+      'share_frequency': shareFrequency,
+      'trigger_on_exit': triggerOnExit,
+      // 하위 호환성을 위해 유지
+      'interstitial_frequency': navigationFrequency,
     };
   }
 }
@@ -139,5 +176,19 @@ class TermsConfigModel {
       'terms_of_service': termsOfService,
       'privacy_policy': privacyPolicy,
     };
+  }
+}
+
+class CompanyInfoModel {
+  final String content;
+
+  CompanyInfoModel({this.content = ''});
+
+  factory CompanyInfoModel.fromMap(Map<String, dynamic> map) {
+    return CompanyInfoModel(content: map['content'] ?? '');
+  }
+
+  Map<String, dynamic> toMap() {
+    return {'content': content};
   }
 }
