@@ -186,6 +186,7 @@ Quotes (`quotes` collection)
 - List (official content, with type filter): `app_id` Asc, `is_user_post` Asc, `type` Asc, `createdAt` Desc
 - User posts (glmoi): `app_id` Asc, `is_user_post` Asc, `createdAt` Desc
 - User posts (with approval filter): `app_id` Asc, `is_user_post` Asc, `is_approved` Asc, `createdAt` Desc
+- **Reported posts (dashboard stats)**: `app_id` Asc, **`report_count` Asc** (required for `isGreaterThan` filter)
 - Reported posts (sorted by report_count then recency): `app_id` Asc, `report_count` Desc, `createdAt` Desc
 - Top posts (like_count): `app_id` Asc, `is_active` Asc, `like_count` Desc
 
@@ -193,9 +194,16 @@ Image assets (`image_assets` collection)
 - Image pool (uploaded_at): `app_id` Asc, `is_active` Asc, `uploaded_at` Desc
 - Image pool (usage_count): `app_id` Asc, `is_active` Asc, `usage_count` Desc
 
-Note:
+**Important Notes:**
 - Firestore may not require every index depending on which screens you use.
 - If you see an index error, the console link in the error message always points to the exact missing index.
+- **Range filters** (`isGreaterThan`, `isLessThan`) require **Ascending** indexes by default.
+- **Descending** indexes are used for sorting (e.g., `orderBy('createdAt', descending: true)`).
+
+**Common Index Issues:**
+- `report_count > 0` query → requires `app_id` Asc, `report_count` **Asc** (not Desc)
+- `createdAt >= cutoff` query → requires `createdAt` **Asc** (not Desc)
+- If the same field is used for both filtering and sorting in different queries, you may need **both Asc and Desc** indexes.
 
 ## Environment Parity Checklist
 

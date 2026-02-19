@@ -17,6 +17,26 @@
 - **주요 기능**: 접속자 수, 누적 가입자 수, AdMob 연동 수익 지표 요약
 - **콘텐츠 지표**: 한줄명언, 좋은생각,말모이의 콘텐츠중  좋아요/공유 수 기준 인기글 TOP 15개씩 노출
 
+#### **AdMob 수익 연동 (구현 완료)**
+- **인증 방식**: OAuth 2.0
+  - Client ID: `352429434218-gsfstlutpo59f0bm3n18jbp1h48fq4j8.apps.googleusercontent.com`
+  - Refresh Token 저장 위치: Firestore `config/admob_oauth`
+- **데이터 수집**: 
+  - Cloud Function: `getAdMobStats` (수동 호출)
+  - 스케줄러: `updateAdMobStatsDaily` (매일 자정 KST)
+  - Publisher ID: `pub-6710996402778251`
+- **표시 지표**: 
+  - 월간 총 수익 (totalEarnings)
+  - 노출수 (impressions)
+  - 클릭수 (clicks)
+  - eCPM (effective Cost Per Mille)
+  - 기간: 당월 1일 ~ 현재
+- **데이터 저장**: Firestore `admob_stats/latest`
+- **구현 방식**: fetch API로 직접 HTTP 요청 (googleapis 라이브러리 사용 시 401 에러 발생하여 우회)
+- **주의사항**: 
+  - Refresh Token은 Google Cloud Console에서 OAuth 앱이 "프로덕션" 상태일 때만 영구 유효
+  - Token 재발급 필요시: `functions/get-admob-token.js` 실행 후 Firestore 수동 업데이트
+
 ### **M2. 글 목록 (Content List)**
 - **구조**: 상단 탭 분리 `[한줄명언]` / `[좋은생각]` / `[글모이]`
 - **기능**: 키워드 검색, 노출 상태(On/Off) 필터링, 수정/삭제 상세페이지 연결
@@ -47,6 +67,83 @@
 - **빈도 제어**: 전면 광고 노출 주기 설정
 - **안내 제어**: 광고 전 감성 안내 문구 및 시간 설정
 
+#### **전면광고 트리거 시스템 고도화 (2025-02-19 구현 완료)**
+
+**개요:**
+- 기존 단일 트리거(화면 이동 횟수)를 4가지 트리거 조건으로 확장
+- 각 트리거별 활성화 여부 및 빈도를 관리자가 개별 설정 가능
+
+**구현 범위:**
+
+1. **관리자 페이지 (app-admin)**
+   - 파일: `lib/features/maumsori/data/models/config_model.dart`
+   - 파일: `lib/features/maumsori/presentation/screens/ad_management_screen.dart`
+   - 기능:
+     - 트리거 조건별 토글 스위치 (활성화/비활성화)
+     - 빈도 선택 UI (ChoiceChip)
+     - Firestore `config/ad_config` 저장
+
+2. **앱 (glmoi)**
+   - 파일: `lib/core/ads/ad_config.dart` - Firestore 필드 파싱
+   - 파일: `lib/core/ads/ad_service.dart` - 트리거 메서드 구현
+   - 파일: `lib/core/ads/ads_controller.dart` - 진입점 추가
+   - 파일: `lib/features/malmoi/presentation/malmoi_write_screen.dart` - 글 작성 연동
+   - 파일: `lib/features/quotes/presentation/detail/quote_detail_screen.dart` - 공유 연동
+   - 파일: `lib/features/quotes/presentation/detail/quote_detail_pager_screen.dart` - 공유 연동
+   - 파일: `lib/app/app.dart` - 앱 종료 연동
+
+**트리거 조건:**
+
+| 트리거 | 기본값 | 빈도 옵션 | Firestore 필드 |
+|--------|--------|-----------|----------------|
+| 화면 이동 횟수 | 활성화(true), 15회 | 10/15/20/25/30/35/40회 | `trigger_on_navigation`, `navigation_frequency` |
+| 글 작성 후 | 비활성화(false), 5회 | 3/5/8/10회 | `trigger_on_post`, `post_frequency` |
+| 글 공유 후 | 비활성화(false), 3회 | 3/5/8/10회 | `trigger_on_share`, `share_frequency` |
+| 앱 종료 시 | 비활성화(false) | - | `trigger_on_exit` |
+
+**데이터 구조 (Firestore `config/ad_config`):**
+```json
+{
+  "is_ad_enabled": true,
+  "is_banner_enabled": true,
+  "banner_android_unit_id": "...",
+  "banner_ios_unit_id": "...",
+  "interstitial_android_unit_id": "...",
+  "interstitial_ios_unit_id": "...",
+  "trigger_on_navigation": true,
+  "navigation_frequency": 15,
+  "trigger_on_post": false,
+  "post_frequency": 5,
+  "trigger_on_share": false,
+  "share_frequency": 3,
+  "trigger_on_exit": false,
+  "interstitial_frequency": 15  // 하위 호환성 (navigation_frequency와 동일)
+}
+```
+
+**AdService 메서드:**
+- `maybeShowInterstitialForNavigation(AdConfig config)` - 화면 이동 시
+- `maybeShowInterstitialForPost(AdConfig config)` - 글 작성 후
+- `maybeShowInterstitialForShare(AdConfig config)` - 공유 후
+- `maybeShowInterstitialForExit(AdConfig config)` - 앱 종료 시
+
+**AdsController 진입점:**
+- `onOpenDetail()` - 기존 (상세 화면 진입)
+- `onPostCreated()` - 신규 (글 작성 완료)
+- `onShareCompleted()` - 신규 (공유 완료)
+- `onAppExit()` - 신규 (앱 종료, `AppLifecycleState.paused`)
+
+**하위 호환성:**
+- 기존 `interstitial_frequency` 필드는 `navigation_frequency`와 동일하게 저장
+- 기존 설정이 있는 경우 자동으로 `trigger_on_navigation=true`, `navigation_frequency={기존값}`으로 마이그레이션
+
+**테스트 시나리오:**
+1. 관리자 페이지에서 각 트리거 활성화 및 빈도 설정
+2. 앱에서 화면 이동 N회 후 광고 표시 확인
+3. 앱에서 글 작성 N회 후 광고 표시 확인
+4. 앱에서 공유 N회 후 광고 표시 확인
+5. 앱 종료 시 광고 표시 확인 (활성화된 경우)
+
 ### **M7. 공통 설정 (App Config)**
 - **환경 설정**: 버전 정보, 강제 업데이트 여부, 점검 모드 스위치
 - **약관 관리**: 서비스 이용약관 및 개인정보 처리방침 (수정 시 시스템 날짜 자동 기록)
@@ -64,14 +161,15 @@
 | **배경 딤(Dim) 강도** | 0.4 | Dropdown: [0.0 ~ 1.0 (0.1 단위)] |
 | **인터랙션 속도** | 500ms | Dropdown: [Fast(300), Normal(500), Slow(800)] |
 
-### **S2. 광고 세부 트리거 (Ad Triggers)**
-| 항목 | 설정값(기본) | 입력/조작 방식 |
-| :--- | :--- | :--- |
-| **전면 광고 빈도** | 5 페이지 | Dropdown: [미노출, 3, 5, 7, 10, 15, 20] |
-| **광고 안내 시간** | 1.5 초 | 고정값 (수정 가능한 변수로 할당) |
-| **공유 후 강제 노출** | Off | Toggle Switch (On/Off) |
-| **글 작성 후 강제 노출** | Off | Toggle Switch (On/Off) |
-| **신규 유입 보호** | 20 페이지 | 직접 입력 (첫 접속 후 20개 글까지 광고 스킵) |
+### **S2. 광고 세부 트리거 (Ad Triggers)** ✅ 2025-02-19 구현 완료
+| 항목 | 설정값(기본) | 입력/조작 방식 | 구현 상태 |
+| :--- | :--- | :--- | :--- |
+| **화면 이동 횟수** | 활성화, 15회 | Toggle + ChoiceChip: [10, 15, 20, 25, 30, 35, 40] | ✅ 완료 |
+| **글 작성 후** | 비활성화, 5회 | Toggle + ChoiceChip: [3, 5, 8, 10] | ✅ 완료 |
+| **글 공유 후** | 비활성화, 3회 | Toggle + ChoiceChip: [3, 5, 8, 10] | ✅ 완료 |
+| **앱 종료 시** | 비활성화 | Toggle Switch (On/Off) | ✅ 완료 |
+| **광고 안내 시간** | 1.5 초 | 고정값 (수정 가능한 변수로 할당) | ⏳ 미구현 |
+| **신규 유입 보호** | 20 페이지 | 직접 입력 (첫 접속 후 20개 글까지 광고 스킵) | ⏳ 미구현 |
 
 ---
 
@@ -133,6 +231,9 @@ https://github.com/vinuspread/glmoi
 ├── main (브랜치) ← glmoi 앱
 └── admin (브랜치) ← app-admin 웹 대시보드
 
+### 효율적인 토큰 사용을 위한 방침
+토큰 낭비를 최소화 하기위해 다양한 에이전트 활용을 적극적으로 사용할것!
+다만, 검증은 sisyphus 가 직접 진행할것.
 
 ### 불필요한 정보 노출 불필요
 Compaction, session summary 내용은 모니터에 노출하지 말것.

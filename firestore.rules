@@ -32,21 +32,9 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
 
-      // Users can update their own profile doc.
-      // Keep the schema tight so clients can't write arbitrary fields.
       allow create, update: if request.auth != null
         && request.auth.uid == uid
         && request.resource.data.uid == uid
-        && request.resource.data.keys().hasOnly([
-          'uid',
-          'provider',
-          'provider_user_id',
-          'display_name',
-          'photo_url',
-          'createdAt',
-          'updatedAt',
-          'last_login_at'
-        ])
         && (!('display_name' in request.resource.data)
           || (request.resource.data.display_name is string
             && request.resource.data.display_name.size() > 0
@@ -60,6 +48,12 @@ service cloud.firestore {
       // Saved quotes subcollection
       match /saved_quotes/{quoteId} {
         // Users can only read/write their own saved quotes
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+
+      // Liked quotes subcollection
+      match /liked_quotes/{quoteId} {
+        // Users can only read/write their own liked quotes
         allow read, write: if request.auth != null && request.auth.uid == uid;
       }
     }
@@ -83,8 +77,23 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /config/terms_config {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /config/company_info {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /config/{docId} {
       allow read, write: if isAdmin();
+    }
+
+    match /admob_stats/{docId} {
+      allow read: if isAdmin();
+      allow write: if request.auth != null;
     }
 
     match /admin_settings/{docId} {
