@@ -16,7 +16,7 @@ class MaumSoriAdminApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '마음소리 Admin',
+      title: '아름다운 글을 모았습니다. 글모이',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),

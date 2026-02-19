@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/intro/presentation/intro_gate.dart';
+import '../features/intro/presentation/splash_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/email_signup_screen.dart';
 import '../features/auth/domain/login_redirect.dart';
@@ -30,8 +31,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final navKey = ref.watch(rootNavigatorKeyProvider);
   return GoRouter(
     navigatorKey: navKey,
-    initialLocation: '/intro',
+    initialLocation: '/splash',
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(
         path: '/intro',
         builder: (context, state) => const IntroGate(),

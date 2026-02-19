@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/ads/ads_controller.dart';
 import '../core/theme/app_theme.dart';
 import '../core/fcm/fcm_service.dart';
 import 'router.dart';
@@ -13,15 +14,32 @@ class GlmoiApp extends ConsumerStatefulWidget {
   ConsumerState<GlmoiApp> createState() => _GlmoiAppState();
 }
 
-class _GlmoiAppState extends ConsumerState<GlmoiApp> {
+class _GlmoiAppState extends ConsumerState<GlmoiApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Initialize unified FCM service after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final navKey = ref.read(rootNavigatorKeyProvider);
       FCMService().initialize(navKey);
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused) {
+      // 앱 종료 시 광고 트리거
+      ref.read(adsControllerProvider).onAppExit();
+    }
   }
 
   @override
