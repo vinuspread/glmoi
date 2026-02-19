@@ -9,7 +9,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'maumsori_dashboard/widgets/dashboard_header.dart';
 import 'maumsori_dashboard/widgets/permission_denied_card.dart';
 import 'maumsori_dashboard/widgets/stats_grid.dart';
+import 'maumsori_dashboard/widgets/activity_stats_section.dart';
 import 'maumsori_dashboard/widgets/system_status_card.dart';
+import 'maumsori_dashboard/widgets/admob_stats_card.dart';
 import 'package:app_admin/core/widgets/admin_background.dart';
 
 class MaumSoriDashboardScreen extends ConsumerWidget {
@@ -18,6 +20,7 @@ class MaumSoriDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(dashboardStatsProvider);
+    final activityStatsAsync = ref.watch(activityStatsProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -40,6 +43,7 @@ class MaumSoriDashboardScreen extends ConsumerWidget {
                         onTapThoughts: () => context.go('/maumsori/content'),
                         onTapImages: () => context.go('/maumsori/images'),
                         onTapPending: () => context.go('/maumsori/glemoi'),
+                        onTapReports: () => context.go('/maumsori/reports'),
                       ),
                       loading: () =>
                           const Center(child: CircularProgressIndicator()),
@@ -55,11 +59,26 @@ class MaumSoriDashboardScreen extends ConsumerWidget {
                             projectId: projectId,
                           );
                         }
-                        return Center(child: Text('Error: $err'));
+                        return Center(
+                          child: SelectableText(
+                            'Error: $err',
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        );
                       },
                     ),
                     const SizedBox(height: 48),
-                    // 추가적인 차트나 최근 활동 내역이 들어갈 자리
+                    activityStatsAsync.when(
+                      data: (activityStats) =>
+                          ActivityStatsSection(stats: activityStats),
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (err, stack) =>
+                          Center(child: Text('활동 통계 로드 실패: $err')),
+                    ),
+                    const SizedBox(height: 48),
+                    const AdMobStatsCard(),
+                    const SizedBox(height: 48),
                     const SystemStatusCard(),
                   ],
                 ),
