@@ -6,6 +6,7 @@ import 'package:glmoi/core/auth/auth_service.dart';
 import 'package:glmoi/core/theme/app_theme.dart';
 import 'package:glmoi/features/auth/domain/login_redirect.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   final LoginRedirect? redirect;
@@ -173,256 +174,277 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
 
+    // Warm, calm solid background (or very subtle gradient)
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFFFFF7F2),
-                Color(0xFFFAF7F2),
-              ],
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Logo Area
+
+
+                Image.asset(
+                  'assets/icons/logo.png',
+                  height: 50,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Text(
+                      '글모이',
+                      textAlign: TextAlign.center,
+                      style: t.textTheme.headlineSmall?.copyWith(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -1.0,
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '누구나 작가가 되는 공간',
+                  textAlign: TextAlign.center,
+                  style: t.textTheme.titleMedium?.copyWith(
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 40),
+
+                // Login Card
+                Container(
+                  decoration: AppTheme.cardDecoration(elevated: true),
+                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 24), // More internal padding
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Container(
-                        height: 52,
-                        width: 52,
-                        decoration: BoxDecoration(
-                          color: AppTheme.accent,
-                          borderRadius:
-                              BorderRadius.circular(AppTheme.radius16),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x22000000),
-                              blurRadius: 18,
-                              offset: Offset(0, 10),
-                            ),
-                          ],
+                      Text(
+                        '이메일로 로그인',
+                        style: t.textTheme.titleLarge // Larger section title
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      
+                      // Email Input
+                      TextField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        autofillHints: const [AutofillHints.email],
+                        style: const TextStyle(fontSize: 18), // Larger input text
+                        decoration: const InputDecoration(
+                          labelText: '이메일 주소',
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
                         ),
-                        child: const Icon(Icons.favorite, color: Colors.white),
+                      ),
+                      const SizedBox(height: 20),
+                      
+                      // Password Input
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        textInputAction: TextInputAction.done,
+                        autofillHints: const [AutofillHints.password],
+                        onSubmitted: (_) => _loginWithEmail(),
+                        style: const TextStyle(fontSize: 18),
+                        decoration: const InputDecoration(
+                          labelText: '비밀번호',
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Login Button (Height 48)
+                      SizedBox(
+                        height: 48,
+                        child: FilledButton(
+                          onPressed: _isEmailLoading ? null : _loginWithEmail,
+                          style: FilledButton.styleFrom(
+                            padding: EdgeInsets.zero, // Remove padding to fit in 48px
+                          ),
+                          child: _isEmailLoading
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
+                                  ),
+                                )
+                              : const Text('로그인', style: TextStyle(fontSize: 18)),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: () =>
+                            context.push('/signup', extra: widget.redirect),
+                        child: const Text('이메일로 회원가입', style: TextStyle(fontSize: 16)),
+                      ),
+                      
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Divider(),
+                      ),
+
+                      // Kakao Login (Height 48)
+                      SizedBox(
+                        height: 48,
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFFEE500),
+                            foregroundColor: const Color(0xFF191919),
+                            padding: EdgeInsets.zero, // Remove padding
+                          ),
+                          onPressed: _isKakaoLoading
+                              ? null
+                              : () async {
+                                  setState(() => _isKakaoLoading = true);
+                                  try {
+                                    await ref
+                                        .read(authProvider.notifier)
+                                        .loginWithKakao();
+
+                                    if (!context.mounted) return;
+                                    if (FirebaseAuth.instance.currentUser !=
+                                        null) {
+                                      _navigateAfterLogin();
+                                    }
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          _friendlyLoginError(
+                                            e,
+                                            fallback: '카카오 로그인에 실패했습니다',
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  } finally {
+                                    if (mounted) {
+                                      setState(() => _isKakaoLoading = false);
+                                    }
+                                  }
+                                },
+                          icon: _isKakaoLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Color(0xFF191919)),
+                                  ),
+                                )
+                              : SvgPicture.asset(
+                                  'assets/icons/kakao.svg',
+                                  width: 24,
+                                  height: 24,
+                                ),
+                          label: Text(
+                              _isKakaoLoading ? '로그인 중...' : '카카오톡으로 시작하기',
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Google Login (Height 48)
+                      SizedBox(
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.zero, // Remove padding
+                          ),
+                          onPressed: _isGoogleLoading
+                              ? null
+                              : () async {
+                                  setState(() => _isGoogleLoading = true);
+                                  try {
+                                    await ref
+                                        .read(authProvider.notifier)
+                                        .loginWithGoogle();
+
+                                    if (!context.mounted) return;
+                                    if (FirebaseAuth.instance.currentUser !=
+                                        null) {
+                                      _navigateAfterLogin();
+                                    }
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          _friendlyLoginError(
+                                            e,
+                                            fallback: '구글 로그인에 실패했습니다',
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  } finally {
+                                    if (mounted) {
+                                      setState(
+                                          () => _isGoogleLoading = false);
+                                    }
+                                  }
+                                },
+                          icon: _isGoogleLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : SvgPicture.asset(
+                                  'assets/icons/google.svg',
+                                  width: 24,
+                                  height: 24,
+                                ),
+                          label: Text(
+                              _isGoogleLoading ? '로그인 중...' : '구글로 시작하기',
+                              // Use app accent color for consistency if desired, or black
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      TextButton(
+                        onPressed: () => context.go('/home'),
+                        child: Text(
+                          '로그인 없이 둘러보기',
+                          style: t.textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textSecondary,
+                            decoration: TextDecoration.underline,
+                            decorationColor: AppTheme.border,
+                            fontSize: 15,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 18),
-                  Text(
-                    '마음소리',
-                    textAlign: TextAlign.center,
-                    style: t.textTheme.headlineSmall,
+                ),
+                
+                // Bottom helper text
+                const SizedBox(height: 32),
+                Text(
+                  '로그인 후 글 작성/좋아요/공유 기능을\n자유롭게 이용해보세요.',
+                  textAlign: TextAlign.center,
+                  style: t.textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.textSecondary,
+                    height: 1.5,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '눈이 편안한 글, 마음을 울리는 한 줄',
-                    textAlign: TextAlign.center,
-                    style: t.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 26),
-                  Container(
-                    decoration: AppTheme.cardDecoration(elevated: true),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          '이메일로 로그인',
-                          style: t.textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.next,
-                          autofillHints: const [AutofillHints.email],
-                          decoration: const InputDecoration(
-                            labelText: '이메일',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        TextField(
-                          controller: _passwordController,
-                          obscureText: true,
-                          textInputAction: TextInputAction.done,
-                          autofillHints: const [AutofillHints.password],
-                          onSubmitted: (_) => _loginWithEmail(),
-                          decoration: const InputDecoration(
-                            labelText: '비밀번호',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 52,
-                          child: FilledButton(
-                            onPressed: _isEmailLoading ? null : _loginWithEmail,
-                            child: _isEmailLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.white),
-                                    ),
-                                  )
-                                : const Text('로그인'),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        TextButton(
-                          onPressed: () =>
-                              context.push('/signup', extra: widget.redirect),
-                          child: const Text('이메일로 회원가입'),
-                        ),
-                        const Divider(height: 28),
-                        SizedBox(
-                          height: 54,
-                          child: FilledButton.icon(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFFFEE500),
-                              foregroundColor: const Color(0xFF191919),
-                            ),
-                            onPressed: _isKakaoLoading
-                                ? null
-                                : () async {
-                                    setState(() => _isKakaoLoading = true);
-
-                                    try {
-                                      await ref
-                                          .read(authProvider.notifier)
-                                          .loginWithKakao();
-
-                                      if (!context.mounted) return;
-                                      if (FirebaseAuth.instance.currentUser !=
-                                          null) {
-                                        _navigateAfterLogin();
-                                      }
-                                    } catch (e) {
-                                      if (!context.mounted) return;
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            _friendlyLoginError(
-                                              e,
-                                              fallback: '카카오 로그인에 실패했습니다',
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    } finally {
-                                      if (mounted) {
-                                        setState(() => _isKakaoLoading = false);
-                                      }
-                                    }
-                                  },
-                            icon: _isKakaoLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Color(0xFF191919)),
-                                    ),
-                                  )
-                                : const Icon(Icons.chat_bubble),
-                            label: Text(
-                                _isKakaoLoading ? '로그인 중...' : '카카오톡으로 시작하기'),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 54,
-                          child: OutlinedButton.icon(
-                            onPressed: _isGoogleLoading
-                                ? null
-                                : () async {
-                                    setState(() => _isGoogleLoading = true);
-
-                                    try {
-                                      await ref
-                                          .read(authProvider.notifier)
-                                          .loginWithGoogle();
-
-                                      if (!context.mounted) return;
-                                      if (FirebaseAuth.instance.currentUser !=
-                                          null) {
-                                        _navigateAfterLogin();
-                                      }
-                                    } catch (e) {
-                                      if (!context.mounted) return;
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            _friendlyLoginError(
-                                              e,
-                                              fallback: '구글 로그인에 실패했습니다',
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    } finally {
-                                      if (mounted) {
-                                        setState(
-                                            () => _isGoogleLoading = false);
-                                      }
-                                    }
-                                  },
-                            icon: _isGoogleLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.g_mobiledata),
-                            label: Text(
-                                _isGoogleLoading ? '로그인 중...' : '구글로 시작하기'),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        TextButton(
-                          onPressed: () => context.go('/home'),
-                          child: Text(
-                            '로그인 없이 둘러보기',
-                            style: t.textTheme.labelLarge?.copyWith(
-                              color: AppTheme.textSecondary,
-                              decoration: TextDecoration.underline,
-                              decorationColor: AppTheme.border,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    '로그인 후 글 작성/좋아요/공유 기능을 사용할 수 있어요.',
-                    textAlign: TextAlign.center,
-                    style: t.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 20),
+              ],
             ),
           ),
         ),

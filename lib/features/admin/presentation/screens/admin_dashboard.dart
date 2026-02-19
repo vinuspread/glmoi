@@ -7,7 +7,7 @@ class AdminDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('마음소리 통합 관리자'),
+        title: Text('아름다운 글을 모았습니다. 글모이'),
         actions: [
           IconButton(icon: const Icon(Icons.logout), onPressed: () {}),
         ],

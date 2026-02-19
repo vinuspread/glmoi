@@ -59,11 +59,15 @@ class SettingsScreen extends ConsumerWidget {
                     return Expanded(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: SizedBox(
+                      child: SizedBox(
                           height: 48,
                           child: isSelected
                               ? FilledButton(
                                   onPressed: null,
+                                  style: FilledButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    visualDensity: VisualDensity.compact,
+                                  ),
                                   child: Text(level.label),
                                 )
                               : OutlinedButton(
@@ -72,6 +76,10 @@ class SettingsScreen extends ConsumerWidget {
                                         .read(fontScaleProvider.notifier)
                                         .setScale(level);
                                   },
+                                  style: OutlinedButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    visualDensity: VisualDensity.compact,
+                                  ),
                                   child: Text(level.label),
                                 ),
                         ),

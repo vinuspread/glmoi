@@ -29,16 +29,23 @@ class MyPageScreen extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.lock_outline,
-                      size: 40, color: AppTheme.textSecondary),
-                  const SizedBox(height: 12),
-                  Text('로그인이 필요합니다.', style: t.textTheme.titleMedium),
-                  const SizedBox(height: 14),
+                      size: 48, color: AppTheme.textSecondary),
+                  const SizedBox(height: 16),
+                  Text('로그인이 필요합니다.',
+                      style: t.textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
-                    height: 52,
+                    height: 56,
                     child: FilledButton(
                       onPressed: () => context.push('/login'),
-                      child: const Text('로그인하기'),
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radius16),
+                        ),
+                      ),
+                      child: const Text('로그인하기', style: TextStyle(fontSize: 18)),
                     ),
                   ),
                 ],
@@ -79,8 +86,8 @@ class MyPageScreen extends ConsumerWidget {
                       }
                     },
                     child: Container(
-                      width: 100,
-                      height: 100,
+                      width: 120,
+                      height: 120,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
@@ -105,44 +112,56 @@ class MyPageScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
                   // 닉네임
                   Text(
                     currentUser.displayName ?? '사용자',
-                    style: t.textTheme.headlineSmall,
+                    style: t.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 28,
+                    ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
 
                   // 이메일
                   if (currentUser.email != null)
                     Text(
                       currentUser.email!,
-                      style: t.textTheme.bodyMedium
-                          ?.copyWith(color: AppTheme.textSecondary),
+                      style: t.textTheme.bodyLarge?.copyWith(
+                        color: AppTheme.textSecondary,
+                        fontSize: 16,
+                      ),
                       textAlign: TextAlign.center,
                     ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
                   // 프로필 수정 버튼
-                  TextButton.icon(
-                    onPressed: () async {
-                      final messenger = ScaffoldMessenger.of(context);
-                      final saved = await showDialog<bool>(
-                        context: context,
-                        builder: (_) => const ProfileEditDialog(),
-                      );
-                      if (saved == true) {
-                        messenger.showSnackBar(
-                          const SnackBar(content: Text('프로필이 저장되었습니다.')),
+                  SizedBox(
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final saved = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => const ProfileEditDialog(),
                         );
-                        ref.invalidate(userStatsProvider);
-                      }
-                    },
-                    icon: const Icon(Icons.edit),
-                    label: const Text('프로필 수정'),
+                        if (saved == true) {
+                          messenger.showSnackBar(
+                            const SnackBar(content: Text('프로필이 저장되었습니다.')),
+                          );
+                          ref.invalidate(userStatsProvider);
+                        }
+                      },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        side: BorderSide(color: AppTheme.border),
+                      ),
+                      icon: const Icon(Icons.edit, size: 20),
+                      label: const Text('프로필 수정', style: TextStyle(fontSize: 16)),
+                    ),
                   ),
                 ],
               ),
@@ -161,8 +180,8 @@ class MyPageScreen extends ConsumerWidget {
                         const Text(
                           '내 활동',
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -194,8 +213,8 @@ class MyPageScreen extends ConsumerWidget {
                         const Text(
                           '내가 받은 감정',
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -261,7 +280,7 @@ class MyPageScreen extends ConsumerWidget {
     return const Icon(
       Icons.person,
       color: AppTheme.textSecondary,
-      size: 50,
+      size: 64,
     );
   }
 }
@@ -283,26 +302,26 @@ class _StatRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final content = Row(
       children: [
-        Icon(icon, color: AppTheme.accent, size: 20),
-        const SizedBox(width: 12),
+        Icon(icon, color: AppTheme.accent, size: 28),
+        const SizedBox(width: 16),
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(fontSize: 15),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
           ),
         ),
         Text(
           '$count개',
           style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
             color: AppTheme.accent,
           ),
         ),
         if (onTap != null) ...[
           const SizedBox(width: 8),
           const Icon(Icons.chevron_right,
-              size: 20, color: AppTheme.textSecondary),
+              size: 24, color: AppTheme.textSecondary),
         ],
       ],
     );
@@ -312,14 +331,14 @@ class _StatRow extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           child: content,
         ),
       );
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       child: content,
     );
   }
@@ -341,8 +360,8 @@ class _ReactionStat extends StatelessWidget {
     return Column(
       children: [
         Container(
-          width: 48,
-          height: 48,
+          width: 38, // Reduced from 48
+          height: 38, // Reduced from 48
           decoration: BoxDecoration(
             color: Colors.white,
             shape: BoxShape.circle,
@@ -354,34 +373,35 @@ class _ReactionStat extends StatelessWidget {
               ),
             ],
           ),
-          child: ClipOval(
+          child: Center(
             child: Image.asset(
               iconPath,
-              width: 32,
-              height: 32,
+              width: 28, // Reduced from 36
+              height: 28, // Reduced from 36
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => const Icon(
                 Icons.sentiment_satisfied,
                 color: AppTheme.textSecondary,
-                size: 24,
+                size: 24, // Reduced from 32
               ),
             ),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(
           label,
           style: const TextStyle(
             fontSize: 12,
+            fontWeight: FontWeight.w500,
             color: AppTheme.textSecondary,
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         Text(
           '$count',
           style: const TextStyle(
             fontSize: 14,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             color: AppTheme.accent,
           ),
         ),
