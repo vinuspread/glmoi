@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.badWordsValidate = exports.deleteAccount = exports.syncProfileToQuotes = exports.deleteMalmoiPost = exports.updateMalmoiPost = exports.createMalmoiPost = exports.moderateUserMalmoiBadWords = exports.reactToQuoteOnce = exports.reportMalmoiOnce = exports.incrementShareCount = exports.likeQuoteOnce = exports.kakaoCustomToken = exports.fillImageAssetDerivedUrls = exports.optimizeImageOnUpload = void 0;
+exports.badWordsValidate = exports.testAdMobAPI = exports.updateAdMobStatsDaily = exports.getAdMobStats = exports.triggerAutoSendNow = exports.executeAutoSend = exports.getAutoSendConfig = exports.saveAutoSendConfig = exports.migrateUserStats = exports.deleteAccount = exports.syncProfileToQuotes = exports.deleteMalmoiPost = exports.updateMalmoiPost = exports.createMalmoiPost = exports.moderateUserMalmoiBadWords = exports.toggleSaveQuote = exports.reactToQuoteOnce = exports.reportMalmoiOnce = exports.incrementShareCount = exports.likeQuoteOnce = exports.kakaoCustomToken = exports.fillImageAssetDerivedUrls = exports.optimizeImageOnUpload = void 0;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
 const badWords_1 = require("./badWords");
@@ -48,6 +48,7 @@ Object.defineProperty(exports, "incrementShareCount", { enumerable: true, get: f
 Object.defineProperty(exports, "likeQuoteOnce", { enumerable: true, get: function () { return interactions_1.likeQuoteOnce; } });
 Object.defineProperty(exports, "reactToQuoteOnce", { enumerable: true, get: function () { return interactions_1.reactToQuoteOnce; } });
 Object.defineProperty(exports, "reportMalmoiOnce", { enumerable: true, get: function () { return interactions_1.reportMalmoiOnce; } });
+Object.defineProperty(exports, "toggleSaveQuote", { enumerable: true, get: function () { return interactions_1.toggleSaveQuote; } });
 const quoteModeration_1 = require("./quoteModeration");
 Object.defineProperty(exports, "moderateUserMalmoiBadWords", { enumerable: true, get: function () { return quoteModeration_1.moderateUserMalmoiBadWords; } });
 const malmoi_1 = require("./malmoi");
@@ -58,7 +59,19 @@ const profile_1 = require("./profile");
 Object.defineProperty(exports, "syncProfileToQuotes", { enumerable: true, get: function () { return profile_1.syncProfileToQuotes; } });
 const account_1 = require("./account");
 Object.defineProperty(exports, "deleteAccount", { enumerable: true, get: function () { return account_1.deleteAccount; } });
+const userStats_1 = require("./userStats");
+Object.defineProperty(exports, "migrateUserStats", { enumerable: true, get: function () { return userStats_1.migrateUserStats; } });
+const autoSend_1 = require("./autoSend");
+Object.defineProperty(exports, "saveAutoSendConfig", { enumerable: true, get: function () { return autoSend_1.saveAutoSendConfig; } });
+Object.defineProperty(exports, "getAutoSendConfig", { enumerable: true, get: function () { return autoSend_1.getAutoSendConfig; } });
+Object.defineProperty(exports, "executeAutoSend", { enumerable: true, get: function () { return autoSend_1.executeAutoSend; } });
+Object.defineProperty(exports, "triggerAutoSendNow", { enumerable: true, get: function () { return autoSend_1.triggerAutoSendNow; } });
 admin.initializeApp();
+var admob_1 = require("./admob");
+Object.defineProperty(exports, "getAdMobStats", { enumerable: true, get: function () { return admob_1.getAdMobStats; } });
+Object.defineProperty(exports, "updateAdMobStatsDaily", { enumerable: true, get: function () { return admob_1.updateAdMobStatsDaily; } });
+var admobTest_1 = require("./admobTest");
+Object.defineProperty(exports, "testAdMobAPI", { enumerable: true, get: function () { return admobTest_1.testAdMobAPI; } });
 exports.badWordsValidate = (0, https_1.onCall)(async (request) => {
     const text = request.data?.text ?? '';
     if (typeof text !== 'string') {

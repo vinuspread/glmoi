@@ -63,12 +63,20 @@ exports.createMalmoiPost = (0, https_1.onCall)({
     await assertCategoryAllowed(category);
     await assertNoBadWords(content);
     const uid = request.auth.uid;
-    const ref = await (0, firestore_1.getFirestore)().collection('quotes').add({
+    const db = (0, firestore_1.getFirestore)();
+    // Get user profile for author_name and author_photo_url
+    const userDoc = await db.collection('users').doc(uid).get();
+    const userData = userDoc.data() || {};
+    const authorName = userData.display_name || author || '';
+    const authorPhotoUrl = userData.photo_url || null;
+    const ref = await db.collection('quotes').add({
         app_id: 'maumsori',
         type: 'malmoi',
         malmoi_length: malmoiLength,
         content,
         author,
+        author_name: authorName,
+        author_photo_url: authorPhotoUrl,
         category,
         image_url: imageUrl.length ? imageUrl : null,
         createdAt: firestore_1.FieldValue.serverTimestamp(),
@@ -83,6 +91,9 @@ exports.createMalmoiPost = (0, https_1.onCall)({
         user_provider: 'firebase',
         user_id: uid,
     });
+    await db.collection('users').doc(uid).set({
+        my_quotes_count: firestore_1.FieldValue.increment(1),
+    }, { merge: true });
     return { ok: true, id: ref.id };
 });
 exports.updateMalmoiPost = (0, https_1.onCall)({
@@ -126,7 +137,8 @@ exports.deleteMalmoiPost = (0, https_1.onCall)({
     }
     const quoteId = parseString(request.data?.quote_id, 'quote_id', { max: 200 });
     const uid = request.auth.uid;
-    const docRef = (0, firestore_1.getFirestore)().collection('quotes').doc(quoteId);
+    const db = (0, firestore_1.getFirestore)();
+    const docRef = db.collection('quotes').doc(quoteId);
     const snap = await docRef.get();
     if (!snap.exists) {
         throw new https_1.HttpsError('not-found', 'quote not found');
@@ -141,5 +153,8 @@ exports.deleteMalmoiPost = (0, https_1.onCall)({
         throw new https_1.HttpsError('permission-denied', 'not owner');
     }
     await docRef.delete();
+    await db.collection('users').doc(uid).set({
+        my_quotes_count: firestore_1.FieldValue.increment(-1),
+    }, { merge: true });
     return { ok: true };
 });

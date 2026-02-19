@@ -45,6 +45,8 @@ exports.syncProfileToQuotes = functions.https.onCall({
         throw new functions.https.HttpsError("unauthenticated", "로그인이 필요합니다.");
     }
     const { displayName, photoURL } = request.data;
+    console.log("[syncProfileToQuotes] Called by user:", auth.uid);
+    console.log("[syncProfileToQuotes] Input:", { displayName, photoURL });
     if (typeof displayName !== "string" || !displayName.trim()) {
         throw new functions.https.HttpsError("invalid-argument", "닉네임을 입력해주세요.");
     }
@@ -56,6 +58,7 @@ exports.syncProfileToQuotes = functions.https.onCall({
             .where("user_id", "==", userId)
             .where("is_user_post", "==", true)
             .get();
+        console.log("[syncProfileToQuotes] Found quotes:", quotesSnapshot.size);
         if (quotesSnapshot.empty) {
             return {
                 success: true,
@@ -72,15 +75,19 @@ exports.syncProfileToQuotes = functions.https.onCall({
             if (typeof photoURL === "string") {
                 updateData.author_photo_url = photoURL || null;
             }
+            console.log(`[syncProfileToQuotes] Updating doc ${doc.id}:`, updateData);
             batch.update(doc.ref, updateData);
             count++;
             if (count % 500 === 0) {
                 await batch.commit();
+                console.log(`[syncProfileToQuotes] Committed batch at ${count} docs`);
             }
         }
         if (count % 500 !== 0) {
             await batch.commit();
+            console.log(`[syncProfileToQuotes] Final commit: ${count} docs`);
         }
+        console.log("[syncProfileToQuotes] Success: updated", count, "documents");
         return {
             success: true,
             updatedCount: count,
