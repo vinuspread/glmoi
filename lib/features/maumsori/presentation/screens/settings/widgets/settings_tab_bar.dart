@@ -19,6 +19,7 @@ class SettingsTabBar extends StatelessWidget {
           Tab(text: '콘텐츠 설정'),
           Tab(text: '버전/모드 관리'),
           Tab(text: '약관 관리'),
+          Tab(text: '회사소개'),
         ],
       ),
     );

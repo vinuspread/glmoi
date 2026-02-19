@@ -11,6 +11,7 @@ import 'settings/widgets/content_settings_tab.dart';
 import 'settings/widgets/settings_header.dart';
 import 'settings/widgets/settings_tab_bar.dart';
 import 'settings/widgets/terms_tab.dart';
+import 'settings/widgets/company_info_tab.dart';
 import 'settings/widgets/version_mode_tab.dart';
 import 'package:app_admin/core/widgets/admin_background.dart';
 import 'package:app_admin/core/firebase/firebase_env_options.dart';
@@ -36,6 +37,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   final _termsController = TextEditingController();
   final _privacyController = TextEditingController();
 
+  // Company Info Controllers
+  final _companyContentController = TextEditingController();
+
   bool _isInitialized = false;
   bool _isSaving = false;
   bool _isSyncingToProd = false;
@@ -53,7 +57,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -64,6 +68,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     _maintenanceMsgController.dispose();
     _termsController.dispose();
     _privacyController.dispose();
+    _companyContentController.dispose();
     _newCategoryController.dispose();
     super.dispose();
   }
@@ -73,6 +78,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     // Watch Configs
     final appConfigAsync = ref.watch(appConfigProvider);
     final termsConfigAsync = ref.watch(termsConfigProvider);
+    final companyInfoConfigAsync = ref.watch(companyInfoConfigProvider);
 
     final projectId = Firebase.app().options.projectId;
     final showSyncToProd = projectId == 'glmoi-dev';
@@ -80,9 +86,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     // Initialize values once when data is loaded
     if (!_isInitialized &&
         appConfigAsync.hasValue &&
-        termsConfigAsync.hasValue) {
+        termsConfigAsync.hasValue &&
+        companyInfoConfigAsync.hasValue) {
       final appConfig = appConfigAsync.value!;
       final termsConfig = termsConfigAsync.value!;
+      final companyInfoConfig = companyInfoConfigAsync.value!;
 
       _minVersionController.text = appConfig.minVersion;
       _latestVersionController.text = appConfig.latestVersion;
@@ -98,6 +106,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
       _termsController.text = termsConfig.termsOfService;
       _privacyController.text = termsConfig.privacyPolicy;
+
+      _companyContentController.text = companyInfoConfig.content;
 
       _isInitialized = true;
     }
@@ -158,6 +168,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                           privacyController: _privacyController,
                           isSaving: _isSaving,
                           onSave: _saveTermsConfig,
+                        ),
+                        CompanyInfoTab(
+                          contentController: _companyContentController,
+                          isSaving: _isSaving,
+                          onSave: _saveCompanyInfoConfig,
                         ),
                       ],
                     ),
@@ -282,6 +297,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         (collection: 'config', doc: 'app_config'),
         (collection: 'config', doc: 'ad_config'),
         (collection: 'config', doc: 'terms_config'),
+        (collection: 'config', doc: 'company_info'),
         (collection: 'admin_settings', doc: 'bad_words'),
       ];
 
@@ -368,6 +384,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('약관이 저장되었습니다.')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _saveCompanyInfoConfig() async {
+    setState(() => _isSaving = true);
+    try {
+      final config = CompanyInfoModel(content: _companyContentController.text);
+      await ref.read(configControllerProvider).updateCompanyInfoConfig(config);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('회사소개가 저장되었습니다.')));
       }
     } catch (e) {
       if (mounted) {

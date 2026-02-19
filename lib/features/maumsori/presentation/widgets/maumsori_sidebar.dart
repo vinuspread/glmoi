@@ -63,6 +63,18 @@ class MaumSoriSidebar extends StatelessWidget {
               isActive: activeRoute == '/maumsori/members',
             ),
             _SidebarItem(
+              icon: Icons.report_outlined,
+              label: '신고 관리',
+              route: '/maumsori/reports',
+              isActive: activeRoute == '/maumsori/reports',
+            ),
+            _SidebarItem(
+              icon: Icons.schedule_send,
+              label: '자동발송',
+              route: '/maumsori/auto-send',
+              isActive: activeRoute == '/maumsori/auto-send',
+            ),
+            _SidebarItem(
               icon: Icons.ads_click,
               label: '광고 관리',
               route: '/maumsori/ads',
