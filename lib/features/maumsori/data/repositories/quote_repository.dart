@@ -58,12 +58,13 @@ class QuoteRepository {
     Query query = _firestore
         .collection(_collectionPath)
         .where('app_id', isEqualTo: _appId)
-        .where('is_user_post', isEqualTo: false)
-        .orderBy('createdAt', descending: true);
+        .where('is_user_post', isEqualTo: false);
 
     if (type != null) {
       query = query.where('type', isEqualTo: contentTypeToFirestore(type));
     }
+
+    query = query.orderBy('createdAt', descending: true);
 
     return query.snapshots().map(
       (snapshot) =>
@@ -203,12 +204,22 @@ class QuoteRepository {
 
   // 대시보드 통계 조회 (API 미활성화 대비 스냅샷 카운팅 방식 사용)
   Future<Map<String, int>> getStats() async {
-    final totalQuotesSnapshot = await _firestore
+    // 전체 공식 콘텐츠 (is_user_post: false)
+    final totalContentSnapshot = await _firestore
         .collection(_collectionPath)
         .where('app_id', isEqualTo: _appId)
         .where('is_user_post', isEqualTo: false)
         .get();
 
+    // 한줄명언 (type: 'quote')
+    final totalQuotesSnapshot = await _firestore
+        .collection(_collectionPath)
+        .where('app_id', isEqualTo: _appId)
+        .where('is_user_post', isEqualTo: false)
+        .where('type', isEqualTo: 'quote')
+        .get();
+
+    // 좋은생각 (type: 'thought')
     final totalThoughtsSnapshot = await _firestore
         .collection(_collectionPath)
         .where('app_id', isEqualTo: _appId)
@@ -216,6 +227,15 @@ class QuoteRepository {
         .where('type', isEqualTo: 'thought')
         .get();
 
+    // 관리자 글모이 (type: 'malmoi', is_user_post: false)
+    final totalMalmoiSnapshot = await _firestore
+        .collection(_collectionPath)
+        .where('app_id', isEqualTo: _appId)
+        .where('is_user_post', isEqualTo: false)
+        .where('type', isEqualTo: 'malmoi')
+        .get();
+
+    // 검수 대기 (is_user_post: true, is_approved: false)
     final pendingUserPostsSnapshot = await _firestore
         .collection(_collectionPath)
         .where('app_id', isEqualTo: _appId)
@@ -223,10 +243,35 @@ class QuoteRepository {
         .where('is_approved', isEqualTo: false)
         .get();
 
+    // 신고된 콘텐츠 (report_count > 0) - 전체
+    final reportedSnapshot = await _firestore
+        .collection(_collectionPath)
+        .where('app_id', isEqualTo: _appId)
+        .where('report_count', isGreaterThan: 0)
+        .get();
+
+    // 미확인 신고 (report_count > 0 && report_read != true)
+    // Firestore는 != 필터를 복합 조건으로 쓰기 어렵기 때문에
+    // 전체 신고 목록에서 클라이언트 측 필터링으로 계산
+    final unreadReportCount = reportedSnapshot.docs
+        .where((doc) => doc.data()['report_read'] != true)
+        .length;
+
     return {
+      'totalContent': totalContentSnapshot.size,
       'totalQuotes': totalQuotesSnapshot.size,
       'totalThoughts': totalThoughtsSnapshot.size,
+      'totalMalmoi': totalMalmoiSnapshot.size,
       'pendingUserPosts': pendingUserPostsSnapshot.size,
+      'reportedCount': reportedSnapshot.size,
+      'unreadReportCount': unreadReportCount,
     };
+  }
+
+  // 신고 읽음 처리 (관리자가 신고 관리 화면에서 확인)
+  Future<void> markReportRead(String quoteId) async {
+    await _firestore.collection(_collectionPath).doc(quoteId).update({
+      'report_read': true,
+    });
   }
 }

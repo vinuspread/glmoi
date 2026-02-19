@@ -117,9 +117,17 @@ class QuoteModel {
   final int likeCount; // 좋아요 수
   final int shareCount; // 공유 수
 
+  // User post metadata (글모이)
+  final String? userUid; // 작성자 UID
+  final String? authorName; // 작성자 닉네임 (사용자 게시글)
+  final DateTime? lastReportAt; // 최근 신고 시간
+
   // Report reason breakdown (populated by user app)
   final Map<String, int> reportReasons;
   final String? lastReportReasonCode;
+
+  // 신고 읽음 여부 (관리자가 신고 관리 화면에서 확인한 경우 true)
+  final bool isReportRead;
 
   QuoteModel({
     required this.id,
@@ -140,8 +148,13 @@ class QuoteModel {
     this.likeCount = 0,
     this.shareCount = 0,
 
+    this.userUid,
+    this.authorName,
+    this.lastReportAt,
+
     this.reportReasons = const {},
     this.lastReportReasonCode,
+    this.isReportRead = false,
   });
 
   factory QuoteModel.fromFirestore(DocumentSnapshot doc) {
@@ -184,8 +197,13 @@ class QuoteModel {
       likeCount: data['like_count'] ?? 0,
       shareCount: data['share_count'] ?? 0,
 
+      userUid: data['user_uid'],
+      authorName: data['author_name'],
+      lastReportAt: (data['last_report_at'] as Timestamp?)?.toDate(),
+
       reportReasons: reasons,
       lastReportReasonCode: data['last_report_reason_code'],
+      isReportRead: data['report_read'] == true,
     );
   }
 
@@ -224,12 +242,16 @@ class QuoteModel {
     int? reportCount,
     int? likeCount,
     int? shareCount,
+    String? userUid,
+    String? authorName,
+    DateTime? lastReportAt,
     Map<String, int>? reportReasons,
     String? lastReportReasonCode,
     ContentType? type,
     MalmoiLength? malmoiLength,
     ContentFont? font,
     ContentFontThickness? fontThickness,
+    bool? isReportRead,
   }) {
     return QuoteModel(
       id: id,
@@ -250,8 +272,13 @@ class QuoteModel {
       likeCount: likeCount ?? this.likeCount,
       shareCount: shareCount ?? this.shareCount,
 
+      userUid: userUid ?? this.userUid,
+      authorName: authorName ?? this.authorName,
+      lastReportAt: lastReportAt ?? this.lastReportAt,
+
       reportReasons: reportReasons ?? this.reportReasons,
       lastReportReasonCode: lastReportReasonCode ?? this.lastReportReasonCode,
+      isReportRead: isReportRead ?? this.isReportRead,
     );
   }
 }
