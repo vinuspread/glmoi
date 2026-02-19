@@ -11,6 +11,8 @@ import 'package:app_admin/features/maumsori/presentation/screens/maumsori_dashbo
 import 'package:app_admin/features/maumsori/presentation/screens/image_pool_screen.dart';
 import 'package:app_admin/features/maumsori/presentation/screens/ad_management_screen.dart';
 import 'package:app_admin/features/maumsori/presentation/screens/member_management_screen.dart';
+import 'package:app_admin/features/maumsori/presentation/screens/report_management_screen.dart';
+import 'package:app_admin/features/maumsori/presentation/screens/auto_send_screen.dart';
 import 'package:app_admin/features/maumsori/presentation/screens/settings_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -95,6 +97,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'members',
             name: 'maumsori_members',
             builder: (context, state) => const MemberManagementScreen(),
+          ),
+          GoRoute(
+            path: 'reports',
+            name: 'maumsori_reports',
+            builder: (context, state) => const ReportManagementScreen(),
+          ),
+          GoRoute(
+            path: 'auto-send',
+            name: 'maumsori_auto_send',
+            builder: (context, state) => const AutoSendScreen(),
           ),
           GoRoute(
             path: 'settings',
