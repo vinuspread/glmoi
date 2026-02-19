@@ -5,11 +5,13 @@ import { findBadWordsMatches, loadBadWordsConfigCached } from './badWords';
 import { optimizeImageOnUpload } from './imageOptimize';
 import { fillImageAssetDerivedUrls } from './imageAssetDerivatives';
 import { kakaoCustomToken } from './kakaoAuth';
-import { incrementShareCount, likeQuoteOnce, reactToQuoteOnce, reportMalmoiOnce } from './interactions';
+import { incrementShareCount, likeQuoteOnce, reactToQuoteOnce, reportMalmoiOnce, toggleSaveQuote } from './interactions';
 import { moderateUserMalmoiBadWords } from './quoteModeration';
 import { createMalmoiPost, deleteMalmoiPost, updateMalmoiPost } from './malmoi';
 import { syncProfileToQuotes } from './profile';
 import { deleteAccount } from './account';
+import { migrateUserStats } from './userStats';
+import { saveAutoSendConfig, getAutoSendConfig, executeAutoSend, triggerAutoSendNow } from './autoSend';
 
 admin.initializeApp();
 
@@ -22,13 +24,20 @@ export { fillImageAssetDerivedUrls };
 export { kakaoCustomToken };
 
 // Interactions
-export { likeQuoteOnce, incrementShareCount, reportMalmoiOnce, reactToQuoteOnce };
+export { likeQuoteOnce, incrementShareCount, reportMalmoiOnce, reactToQuoteOnce, toggleSaveQuote };
 
 export { moderateUserMalmoiBadWords };
 export { createMalmoiPost, updateMalmoiPost, deleteMalmoiPost };
 
 export { syncProfileToQuotes };
 export { deleteAccount };
+
+export { migrateUserStats };
+
+export { saveAutoSendConfig, getAutoSendConfig, executeAutoSend, triggerAutoSendNow };
+
+export { getAdMobStats, updateAdMobStatsDaily } from './admob';
+export { testAdMobAPI } from './admobTest';
 
 export const badWordsValidate = onCall(async (request) => {
   const text = (request.data?.text as string | undefined) ?? '';

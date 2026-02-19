@@ -17,6 +17,9 @@ export const syncProfileToQuotes = functions.https.onCall(
 
     const {displayName, photoURL} = request.data;
 
+    console.log("[syncProfileToQuotes] Called by user:", auth.uid);
+    console.log("[syncProfileToQuotes] Input:", {displayName, photoURL});
+
     if (typeof displayName !== "string" || !displayName.trim()) {
       throw new functions.https.HttpsError(
         "invalid-argument",
@@ -33,6 +36,8 @@ export const syncProfileToQuotes = functions.https.onCall(
         .where("user_id", "==", userId)
         .where("is_user_post", "==", true)
         .get();
+
+      console.log("[syncProfileToQuotes] Found quotes:", quotesSnapshot.size);
 
       if (quotesSnapshot.empty) {
         return {
@@ -57,17 +62,23 @@ export const syncProfileToQuotes = functions.https.onCall(
           updateData.author_photo_url = photoURL || null;
         }
 
+        console.log(`[syncProfileToQuotes] Updating doc ${doc.id}:`, updateData);
+        
         batch.update(doc.ref, updateData);
         count++;
 
         if (count % 500 === 0) {
           await batch.commit();
+          console.log(`[syncProfileToQuotes] Committed batch at ${count} docs`);
         }
       }
 
       if (count % 500 !== 0) {
         await batch.commit();
+        console.log(`[syncProfileToQuotes] Final commit: ${count} docs`);
       }
+
+      console.log("[syncProfileToQuotes] Success: updated", count, "documents");
 
       return {
         success: true,

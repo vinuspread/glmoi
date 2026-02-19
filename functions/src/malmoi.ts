@@ -74,13 +74,22 @@ export const createMalmoiPost = onCall(
     await assertNoBadWords(content);
 
     const uid = request.auth.uid;
+    const db = getFirestore();
 
-    const ref = await getFirestore().collection('quotes').add({
+    // Get user profile for author_name and author_photo_url
+    const userDoc = await db.collection('users').doc(uid).get();
+    const userData = userDoc.data() || {};
+    const authorName = (userData.display_name as string) || author || '';
+    const authorPhotoUrl = (userData.photo_url as string) || null;
+
+    const ref = await db.collection('quotes').add({
       app_id: 'maumsori',
       type: 'malmoi',
       malmoi_length: malmoiLength,
       content,
       author,
+      author_name: authorName,
+      author_photo_url: authorPhotoUrl,
       category,
       image_url: imageUrl.length ? imageUrl : null,
       createdAt: FieldValue.serverTimestamp(),
@@ -95,6 +104,13 @@ export const createMalmoiPost = onCall(
       user_provider: 'firebase',
       user_id: uid,
     });
+
+    await db.collection('users').doc(uid).set(
+      {
+        my_quotes_count: FieldValue.increment(1),
+      },
+      { merge: true }
+    );
 
     return { ok: true, id: ref.id };
   },
@@ -155,7 +171,8 @@ export const deleteMalmoiPost = onCall(
     const quoteId = parseString(request.data?.quote_id, 'quote_id', { max: 200 });
 
     const uid = request.auth.uid;
-    const docRef = getFirestore().collection('quotes').doc(quoteId);
+    const db = getFirestore();
+    const docRef = db.collection('quotes').doc(quoteId);
     const snap = await docRef.get();
     if (!snap.exists) {
       throw new HttpsError('not-found', 'quote not found');
@@ -172,6 +189,14 @@ export const deleteMalmoiPost = onCall(
     }
 
     await docRef.delete();
+
+    await db.collection('users').doc(uid).set(
+      {
+        my_quotes_count: FieldValue.increment(-1),
+      },
+      { merge: true }
+    );
+
     return { ok: true };
   },
 );
