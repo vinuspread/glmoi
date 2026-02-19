@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
+import '../../../core/ads/ads_controller.dart';
 import '../../../core/auth/auth_service.dart';
 import '../../../core/config/app_config_provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -130,6 +131,10 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
             category: cat,
             malmoiLength: _selectedLength,
           );
+
+      // 글 작성 후 광고 트리거
+      await ref.read(adsControllerProvider).onPostCreated();
+
       if (!mounted) return;
       context.pop();
     } catch (e) {
@@ -220,19 +225,19 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
                   borderRadius: BorderRadius.circular(AppTheme.radius16),
                   border: Border.all(color: AppTheme.border),
                 ),
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
                     const Icon(
                       Icons.info_outline,
-                      size: 18,
+                      size: 24,
                       color: AppTheme.textSecondary,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         '글 작성은 로그인 후 이용 가능합니다.',
-                        style: t.textTheme.bodyMedium
+                        style: t.textTheme.bodyLarge
                             ?.copyWith(color: AppTheme.textSecondary),
                       ),
                     ),
@@ -258,20 +263,20 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
                               },
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
-                            vertical: 10,
-                            horizontal: 4,
+                            vertical: 14,
+                            horizontal: 8,
                           ),
                           child: Row(
                             children: [
                               const Icon(
                                 Icons.tune,
-                                size: 18,
+                                size: 24,
                                 color: AppTheme.textSecondary,
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 12),
                               Text(
                                 '옵션열기',
-                                style: t.textTheme.bodyMedium?.copyWith(
+                                style: t.textTheme.bodyLarge?.copyWith(
                                   color: AppTheme.textSecondary,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -279,6 +284,7 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
                               const Spacer(),
                               const Icon(
                                 Icons.expand_more,
+                                size: 24,
                                 color: AppTheme.textSecondary,
                               ),
                             ],
@@ -292,10 +298,10 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
                             children: [
                               const Icon(
                                 Icons.category_outlined,
-                                size: 18,
+                                size: 24,
                                 color: AppTheme.textSecondary,
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: appConfigAsync.when(
                                   data: (cfg) {
@@ -303,7 +309,8 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
                                     if (items.isEmpty) {
                                       return Text(
                                         '-',
-                                        style: t.textTheme.bodyMedium?.copyWith(
+                                        style:
+                                            t.textTheme.titleMedium?.copyWith(
                                           color: AppTheme.textSecondary,
                                         ),
                                       );
@@ -319,7 +326,11 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
                                       items: items
                                           .map((c) => DropdownMenuItem(
                                                 value: c,
-                                                child: Text(c),
+                                                child: Text(
+                                                  c,
+                                                  style: const TextStyle(
+                                                      fontSize: 16),
+                                                ),
                                               ))
                                           .toList(),
                                       onChanged: _saving
@@ -330,6 +341,9 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
                                       decoration: const InputDecoration(
                                         isDense: true,
                                         labelText: '카테고리',
+                                        labelStyle: TextStyle(fontSize: 16),
+                                        contentPadding: EdgeInsets.symmetric(
+                                            vertical: 12, horizontal: 12),
                                       ),
                                     );
                                   },
@@ -346,18 +360,20 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 16),
                           Row(
                             children: [
                               const Icon(
                                 Icons.format_align_left,
-                                size: 18,
+                                size: 24,
                                 color: AppTheme.textSecondary,
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 12),
                               ChoiceChip(
-                                label: const Text('짧은글'),
+                                label: const Text('짧은글',
+                                    style: TextStyle(fontSize: 16)),
                                 selected: _selectedLength == MalmoiLength.short,
+                                padding: const EdgeInsets.all(8),
                                 onSelected: _saving
                                     ? null
                                     : (_) => setState(
@@ -365,10 +381,12 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
                                               MalmoiLength.short,
                                         ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 12),
                               ChoiceChip(
-                                label: const Text('긴글'),
+                                label: const Text('긴글',
+                                    style: TextStyle(fontSize: 16)),
                                 selected: _selectedLength == MalmoiLength.long,
+                                padding: const EdgeInsets.all(8),
                                 onSelected: _saving
                                     ? null
                                     : (_) => setState(
@@ -378,15 +396,15 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 16),
                           Row(
                             children: [
                               const Icon(
                                 Icons.image_outlined,
-                                size: 18,
+                                size: 24,
                                 color: AppTheme.textSecondary,
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 12),
                               OutlinedButton(
                                 onPressed: _saving
                                     ? null
@@ -401,8 +419,26 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
                                         setState(() => _selectedBackgroundUrl =
                                             selected.isEmpty ? null : selected);
                                       },
-                                child: const Text('배경선택'),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20, vertical: 12),
+                                ),
+                                child: Text(
+                                  _selectedBackgroundUrl != null
+                                      ? '배경 변경'
+                                      : '배경 선택',
+                                  style: const TextStyle(fontSize: 16),
+                                ),
                               ),
+                              if (_selectedBackgroundUrl != null) ...[
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  onPressed: () => setState(
+                                      () => _selectedBackgroundUrl = null),
+                                  icon: const Icon(Icons.close_rounded),
+                                  tooltip: '배경 제거',
+                                ),
+                              ],
                             ],
                           ),
                         ],
@@ -420,6 +456,11 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
                 maxLength: 2000,
                 textAlignVertical: TextAlignVertical.top,
                 scrollPadding: const EdgeInsets.only(bottom: 160),
+                style: const TextStyle(
+                  fontSize: 18,
+                  height: 1.6,
+                  color: AppTheme.textPrimary,
+                ),
                 onTap: () {
                   if (_optionsExpanded) {
                     setState(() => _optionsExpanded = false);
@@ -427,14 +468,35 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
                 },
                 decoration: const InputDecoration(
                   hintText: '내용을 입력하세요 (최대 2,000자)',
+                  hintStyle: TextStyle(
+                    fontSize: 18,
+                    color: AppTheme.textSecondary,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.all(8),
                 ),
               ),
             ),
             const SizedBox(height: 12),
             if (!isKeyboardOpen)
-              FilledButton(
-                onPressed: (_saving || uidAsync.isLoading) ? null : _submit,
-                child: const Text('등록하기'),
+              SizedBox(
+                height: 56,
+                child: FilledButton(
+                  onPressed: (_saving || uidAsync.isLoading) ? null : _submit,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.accent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radius16),
+                    ),
+                  ),
+                  child: const Text(
+                    '등록하기',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               ),
           ],
         ),
