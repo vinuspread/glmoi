@@ -6,10 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/ads/ads_controller.dart';
 import '../../../../core/ads/banner_ad_widget.dart';
 import '../../../../core/auth/auth_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/share/kakao_talk_share_service.dart';
+import '../../../../core/share/share_sheet.dart';
 import '../../../auth/domain/login_redirect.dart';
 import '../../data/interactions_repository.dart';
 import '../../data/quotes_repository.dart';
@@ -165,14 +167,23 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
     final bannerSafeBottomPadding =
         MediaQuery.paddingOf(context).bottom + 50 + 16;
 
+    final hasImage = quote.imageUrl != null && quote.imageUrl!.isNotEmpty;
+    // Adaptive colors based on background
+    final textColor = hasImage ? Colors.white : AppTheme.textPrimary;
+    final pillBgColor = hasImage
+        ? const Color(0x4DFFFFFF)
+        : const Color(0x14000000); // Darker pill on light bg
+    final pillIconColor = hasImage ? Colors.white : AppTheme.textPrimary;
+
     if (!widget.showChrome) {
       // Used by the detail pager: render only the changing content.
       return Scaffold(
-        backgroundColor: const Color(0xFF0B1220),
+        backgroundColor:
+            hasImage ? const Color(0xFF0B1220) : AppTheme.background,
         body: Stack(
           fit: StackFit.expand,
           children: [
-            if (quote.imageUrl != null && quote.imageUrl!.isNotEmpty)
+            if (hasImage) ...[
               CachedNetworkImage(
                 imageUrl: quote.imageUrl!,
                 fit: BoxFit.cover,
@@ -180,26 +191,24 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                 memCacheHeight: bgCacheH,
                 errorWidget: (_, __, ___) =>
                     const ColoredBox(color: Color(0xFF0B1220)),
-              )
-            else
-              const ColoredBox(color: Color(0xFF0B1220)),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xCC000000),
-                    Color(0x66000000),
-                    Color(0x99000000),
-                  ],
+              ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xCC000000),
+                      Color(0x66000000),
+                      Color(0x99000000),
+                    ],
+                  ),
                 ),
               ),
-            ),
+            ],
             SafeArea(
               bottom: false,
               child: Padding(
-                // Keep content away from fixed chrome (close button + action bar)
                 // Keep content away from fixed chrome (close button + action bar + banner ad)
                 padding: const EdgeInsets.fromLTRB(0, 56, 0, 0),
                 child: isLong
@@ -208,8 +217,9 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                         bottomPadding: quote.type == QuoteType.thought
                             ? widget.bottomOverlayPadding
                             : 24,
+                        textColor: textColor,
                       )
-                    : _ShortFormContent(quote: quote),
+                    : _ShortFormContent(quote: quote, textColor: textColor),
               ),
             ),
           ],
@@ -218,14 +228,14 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B1220),
+      backgroundColor: hasImage ? const Color(0xFF0B1220) : AppTheme.background,
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: _revealActions,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (quote.imageUrl != null && quote.imageUrl!.isNotEmpty)
+            if (hasImage) ...[
               CachedNetworkImage(
                 imageUrl: quote.imageUrl!,
                 fit: BoxFit.cover,
@@ -233,22 +243,21 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                 memCacheHeight: bgCacheH,
                 errorWidget: (_, __, ___) =>
                     const ColoredBox(color: Color(0xFF0B1220)),
-              )
-            else
-              const ColoredBox(color: Color(0xFF0B1220)),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xCC000000),
-                    Color(0x66000000),
-                    Color(0x99000000),
-                  ],
+              ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xCC000000),
+                      Color(0x66000000),
+                      Color(0x99000000),
+                    ],
+                  ),
                 ),
               ),
-            ),
+            ],
             SafeArea(
               child: Column(
                 children: [
@@ -258,12 +267,15 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                       _TopPillButton(
                         label: '닫기',
                         onPressed: () => Navigator.pop(context),
-                        backgroundColor: const Color(0x4DFFFFFF),
+                        backgroundColor: pillBgColor,
+                        textColor: pillIconColor,
                       ),
                       const Spacer(),
                       if (!isOwner && quote.type == QuoteType.malmoi)
                         _TopPillButton(
                           label: '신고',
+                          backgroundColor: pillBgColor,
+                          textColor: pillIconColor,
                           onPressed: () async {
                             final isLoggedIn = ref.read(authProvider);
                             if (!isLoggedIn) {
@@ -309,6 +321,8 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                         _TopReactionButton(
                           quote: quote,
                           myReaction: myReaction,
+                          backgroundColor: pillBgColor,
+                          textColor: pillIconColor,
                           onReact: (reaction) async {
                             final isLoggedIn = ref.read(authProvider);
                             if (!isLoggedIn) {
@@ -385,6 +399,8 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                       if (isOwner)
                         _TopPillButton(
                           label: '수정',
+                          backgroundColor: pillBgColor,
+                          textColor: pillIconColor,
                           onPressed: () async {
                             final messenger = ScaffoldMessenger.of(context);
                             final updatedContent = await context.push<String>(
@@ -406,6 +422,7 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                           padding: const EdgeInsets.only(left: 8),
                           child: _TopPillButton(
                             label: '삭제',
+                            backgroundColor: pillBgColor,
                             textColor: const Color(0xFFFCA5A5),
                             onPressed: () async {
                               final messenger = ScaffoldMessenger.of(context);
@@ -459,8 +476,9 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                             bottomPadding: quote.type == QuoteType.thought
                                 ? bannerSafeBottomPadding
                                 : 24,
+                            textColor: textColor,
                           )
-                        : _ShortFormContent(quote: quote),
+                        : _ShortFormContent(quote: quote, textColor: textColor),
                   ),
                 ],
               ),
@@ -487,6 +505,7 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                           isSaved: isSaved,
                           likeCount: quote.likeCount,
                           shareCount: quote.shareCount,
+                          isLightMode: !hasImage,
                           onLike: () async {
                             final isLoggedIn = ref.read(authProvider);
                             if (!isLoggedIn) {
@@ -586,25 +605,36 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                                   extra: const LoginRedirect.pop());
                               return;
                             }
-                            final messenger = ScaffoldMessenger.of(context);
                             final author =
                                 (quote.authorName ?? quote.author).trim();
-                            final text = author.isEmpty
+                            final plainText = author.isEmpty
                                 ? quote.content
                                 : '${quote.content}\n\n- $author -';
-                            try {
-                              await KakaoTalkShareService.share(
-                                KakaoTalkShareContent(text: text),
-                              );
-                              await ref
-                                  .read(_interactionsRepoProvider)
-                                  .incrementShareCount(quoteId: quote.id);
-                            } catch (e) {
-                              if (!mounted) return;
-                              messenger.showSnackBar(
-                                SnackBar(content: Text('공유 실패: $e')),
-                              );
-                            }
+
+                            final shared = await showShareSheet(
+                              context: context,
+                              content: KakaoTalkShareContent(
+                                text: plainText,
+                                title: '좋은 글 모음',
+                                description: quote.content,
+                                imageUrl: quote.imageUrl,
+                                likeCount: quote.likeCount,
+                                shareCount: quote.shareCount,
+                              ),
+                              plainText: plainText,
+                            );
+
+                            if (!shared) return;
+                            if (!mounted) return;
+
+                            await ref
+                                .read(_interactionsRepoProvider)
+                                .incrementShareCount(quoteId: quote.id);
+
+                            // 공유 후 광고 트리거
+                            await ref
+                                .read(adsControllerProvider)
+                                .onShareCompleted();
                           },
                         ),
                       ),
@@ -626,6 +656,7 @@ class QuoteDetailActionBar extends StatelessWidget {
   final bool isSaved;
   final int likeCount;
   final int shareCount;
+  final bool isLightMode;
   final Future<void> Function() onLike;
   final Future<void> Function() onSave;
   final Future<void> Function() onShare;
@@ -636,6 +667,7 @@ class QuoteDetailActionBar extends StatelessWidget {
     required this.isSaved,
     required this.likeCount,
     required this.shareCount,
+    this.isLightMode = false,
     required this.onLike,
     required this.onSave,
     required this.onShare,
@@ -643,6 +675,13 @@ class QuoteDetailActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Light mode: Text Primary / Dark mode: White
+    final baseColor = isLightMode ? AppTheme.textPrimary : Colors.white;
+    // Light mode: Border color / Dark mode: White translucent
+    final borderColor = isLightMode ? AppTheme.border : const Color(0x33FFFFFF);
+    // Light mode: White with shadow? Or just white. / Dark mode: translucent black
+    final bgColor = isLightMode ? Colors.white : const Color(0xCC000000);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
       child: Row(
@@ -651,14 +690,14 @@ class QuoteDetailActionBar extends StatelessWidget {
             child: OutlinedButton(
               onPressed: () => onLike(),
               style: OutlinedButton.styleFrom(
-                backgroundColor: const Color(0xCC000000),
-                side: const BorderSide(color: Color(0x33FFFFFF)),
+                backgroundColor: bgColor,
+                side: BorderSide(color: borderColor),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               child: Text(
                 '좋아요 $likeCount',
                 style: TextStyle(
-                  color: isLiked ? AppTheme.accent : Colors.white,
+                  color: isLiked ? AppTheme.accent : baseColor,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -669,14 +708,14 @@ class QuoteDetailActionBar extends StatelessWidget {
             child: OutlinedButton(
               onPressed: () => onSave(),
               style: OutlinedButton.styleFrom(
-                backgroundColor: const Color(0xCC000000),
-                side: const BorderSide(color: Color(0x33FFFFFF)),
+                backgroundColor: bgColor,
+                side: BorderSide(color: borderColor),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               child: Text(
                 '담기',
                 style: TextStyle(
-                  color: isSaved ? AppTheme.accent : Colors.white,
+                  color: isSaved ? AppTheme.accent : baseColor,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -785,7 +824,9 @@ class _TopPillButton extends StatelessWidget {
 
 class _ShortFormContent extends StatelessWidget {
   final Quote quote;
-  const _ShortFormContent({required this.quote});
+  final Color? textColor;
+
+  const _ShortFormContent({required this.quote, this.textColor});
 
   @override
   Widget build(BuildContext context) {
@@ -802,14 +843,14 @@ class _ShortFormContent extends StatelessWidget {
               baseFontSize: 24,
               height: 1.55,
               fontWeight: FontWeight.w500,
-              color: Colors.white,
+              color: textColor ?? Colors.white,
             ),
             if (author.isNotEmpty) ...[
               const SizedBox(height: 20),
               Text(
                 '- $author -',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 200),
+                  color: (textColor ?? Colors.white).withValues(alpha: 200),
                   fontSize: 14,
                 ),
               ),
@@ -824,7 +865,13 @@ class _ShortFormContent extends StatelessWidget {
 class _LongFormContent extends StatelessWidget {
   final Quote quote;
   final double bottomPadding;
-  const _LongFormContent({required this.quote, this.bottomPadding = 24});
+  final Color? textColor;
+
+  const _LongFormContent({
+    required this.quote,
+    this.bottomPadding = 24,
+    this.textColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -843,14 +890,14 @@ class _LongFormContent extends StatelessWidget {
               baseFontSize: 22,
               height: 1.65,
               fontWeight: FontWeight.w400,
-              color: Colors.white,
+              color: textColor ?? Colors.white,
             ),
             if (author.isNotEmpty) ...[
               const SizedBox(height: 20),
               Text(
                 '- $author -',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 200),
+                  color: (textColor ?? Colors.white).withValues(alpha: 200),
                   fontSize: 14,
                 ),
               ),
@@ -867,10 +914,15 @@ class _TopReactionButton extends StatefulWidget {
   final ReactionType? myReaction;
   final Future<void> Function(ReactionType reaction) onReact;
 
+  final Color? backgroundColor;
+  final Color? textColor;
+
   const _TopReactionButton({
     required this.quote,
     required this.myReaction,
     required this.onReact,
+    this.backgroundColor,
+    this.textColor,
   });
 
   @override
@@ -899,7 +951,9 @@ class _TopReactionButtonState extends State<_TopReactionButton> {
         // Main button (top pill style)
         _TopPillButton(
           label: '반응 $totalReactions',
-          textColor: widget.myReaction != null ? AppTheme.accent : Colors.white,
+          textColor: widget.textColor ??
+              (widget.myReaction != null ? AppTheme.accent : Colors.white),
+          backgroundColor: widget.backgroundColor,
           onPressed: () {
             setState(() => _showBubble = !_showBubble);
           },

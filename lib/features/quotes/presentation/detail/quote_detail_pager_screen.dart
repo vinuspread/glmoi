@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/ads/ads_controller.dart';
 import '../../../../core/ads/banner_ad_widget.dart';
 import '../../../../core/auth/auth_service.dart';
 import '../../../../core/share/kakao_talk_share_service.dart';
+import '../../../../core/share/share_sheet.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/interactions_repository.dart';
 import '../../data/quotes_repository.dart';
@@ -147,6 +149,12 @@ class _QuoteDetailPagerScreenState
         ((quote.userUid != null && quote.userUid == currentUid) ||
             (quote.userProvider == 'firebase' && quote.userId == currentUid));
 
+    final hasImage = quote.imageUrl != null && quote.imageUrl!.isNotEmpty;
+    // Adaptive colors
+    final pillBgColor =
+        hasImage ? const Color(0x4DFFFFFF) : const Color(0x14000000);
+    final pillIconColor = hasImage ? Colors.white : AppTheme.textPrimary;
+
     debugPrint(
         '[QuoteDetailPager] quote.id=${quote.id}, type=${quote.type}, showReactions=$showReactions, myReaction=$myReaction');
 
@@ -166,6 +174,8 @@ class _QuoteDetailPagerScreenState
                 setState(() {
                   _index = i;
                 });
+                // 슬라이드로 다음/이전 글 이동 시도 화면이동 횟수 광고 트리거
+                ref.read(adsControllerProvider).onOpenDetail();
               },
               itemBuilder: (context, index) {
                 final q = _quotes[index];
@@ -226,12 +236,15 @@ class _QuoteDetailPagerScreenState
                       _TopPillButton(
                         label: '닫기',
                         onPressed: () => Navigator.pop(context),
-                        backgroundColor: const Color(0x4DFFFFFF),
+                        backgroundColor: pillBgColor,
+                        textColor: pillIconColor,
                       ),
                       const Spacer(),
                       if (!isOwner && quote.type == QuoteType.malmoi)
                         _TopPillButton(
                           label: '신고',
+                          backgroundColor: pillBgColor,
+                          textColor: pillIconColor,
                           onPressed: () async {
                             if (!isLoggedIn) {
                               context.push('/login');
@@ -274,6 +287,8 @@ class _QuoteDetailPagerScreenState
                         _TopReactionButton(
                           quote: quote,
                           myReaction: myReaction,
+                          backgroundColor: pillBgColor,
+                          textColor: pillIconColor,
                           onReact: (reaction, assetPath) async {
                             if (!isLoggedIn) {
                               context.push('/login');
@@ -351,6 +366,8 @@ class _QuoteDetailPagerScreenState
                       if (isOwner)
                         _TopPillButton(
                           label: '수정',
+                          backgroundColor: pillBgColor,
+                          textColor: pillIconColor,
                           onPressed: () async {
                             final messenger = ScaffoldMessenger.of(context);
                             final updatedContent = await context.push<String>(
@@ -373,6 +390,7 @@ class _QuoteDetailPagerScreenState
                           padding: const EdgeInsets.only(left: 8),
                           child: _TopPillButton(
                             label: '삭제',
+                            backgroundColor: pillBgColor,
                             textColor: const Color(0xFFFCA5A5),
                             onPressed: () async {
                               final messenger = ScaffoldMessenger.of(context);
@@ -443,6 +461,7 @@ class _QuoteDetailPagerScreenState
                           isSaved: isSaved,
                           likeCount: quote.likeCount,
                           shareCount: quote.shareCount,
+                          isLightMode: !hasImage,
                           onLike: () async {
                             if (!isLoggedIn) {
                               context.push('/login');
@@ -534,33 +553,43 @@ class _QuoteDetailPagerScreenState
                               context.push('/login');
                               return;
                             }
-                            final messenger = ScaffoldMessenger.of(context);
                             final author =
                                 (quote.authorName ?? quote.author).trim();
-                            final text = author.isEmpty
+                            final plainText = author.isEmpty
                                 ? quote.content
                                 : '${quote.content}\n\n- $author -';
-                            try {
-                              await KakaoTalkShareService.share(
-                                KakaoTalkShareContent(text: text),
-                              );
 
-                              // Optimistic UI update after share
-                              setState(() {
-                                _quotes[_index] = quote.copyWith(
-                                  shareCount: quote.shareCount + 1,
-                                );
-                              });
+                            final shared = await showShareSheet(
+                              context: context,
+                              content: KakaoTalkShareContent(
+                                text: plainText,
+                                title: '좋은 글 모음',
+                                description: quote.content,
+                                imageUrl: quote.imageUrl,
+                                likeCount: quote.likeCount,
+                                shareCount: quote.shareCount,
+                              ),
+                              plainText: plainText,
+                            );
 
-                              await ref
-                                  .read(_interactionsRepoProvider)
-                                  .incrementShareCount(quoteId: quote.id);
-                            } catch (e) {
-                              if (!context.mounted) return;
-                              messenger.showSnackBar(
-                                SnackBar(content: Text('공유 실패: $e')),
+                            if (!shared) return;
+                            if (!context.mounted) return;
+
+                            // Optimistic UI update after share
+                            setState(() {
+                              _quotes[_index] = quote.copyWith(
+                                shareCount: quote.shareCount + 1,
                               );
-                            }
+                            });
+
+                            await ref
+                                .read(_interactionsRepoProvider)
+                                .incrementShareCount(quoteId: quote.id);
+
+                            // 공유 후 광고 트리거
+                            await ref
+                                .read(adsControllerProvider)
+                                .onShareCompleted();
                           },
                         ),
                       ),
@@ -632,10 +661,15 @@ class _TopReactionButton extends StatefulWidget {
   final ReactionType? myReaction;
   final Future<void> Function(ReactionType reaction, String assetPath) onReact;
 
+  final Color? backgroundColor;
+  final Color? textColor;
+
   const _TopReactionButton({
     required this.quote,
     required this.myReaction,
     required this.onReact,
+    this.backgroundColor,
+    this.textColor,
   });
 
   @override
@@ -723,7 +757,9 @@ class _TopReactionButtonState extends State<_TopReactionButton> {
 
     return _TopPillButton(
       label: '반응 $totalReactions',
-      textColor: widget.myReaction != null ? AppTheme.accent : Colors.white,
+      textColor: widget.textColor ??
+          (widget.myReaction != null ? AppTheme.accent : Colors.white),
+      backgroundColor: widget.backgroundColor,
       onPressed: _showReactionSheet,
     );
   }
