@@ -26,6 +26,7 @@ class QuoteFeedCard extends ConsumerWidget {
       // "한줄명언" list item: rounded image-backed box + 2-line text.
       return ClipRRect(
         borderRadius: BorderRadius.circular(AppTheme.radius24), // Consistent radius
+
         child: Stack(
           children: [
             if (showImage)

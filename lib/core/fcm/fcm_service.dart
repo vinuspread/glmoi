@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -42,6 +44,19 @@ class FCMService {
         // Get FCM token
         final token = await _messaging.getToken();
         debugPrint('[FCM] Token: $token');
+        if (token != null) {
+          await _saveFcmToken(token);
+        }
+
+        _messaging.onTokenRefresh.listen(_saveFcmToken);
+
+        FirebaseAuth.instance.authStateChanges().listen((user) {
+          if (user != null) {
+            _messaging.getToken().then((t) {
+              if (t != null) _saveFcmToken(t);
+            });
+          }
+        });
 
         // Initialize local notification service with tap handler
         await LocalNotificationService().initialize(
@@ -103,6 +118,15 @@ class FCMService {
     }
   }
 
+  Future<void> _saveFcmToken(String token) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .set({'fcm_token': token}, SetOptions(merge: true));
+  }
+
   /// Unsubscribe from FCM topic
   Future<void> unsubscribe() async {
     try {
@@ -134,16 +158,19 @@ class FCMService {
 
       final context = _navigatorKey!.currentContext;
       if (context != null && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.clearSnackBars();
+        final controller = messenger.showSnackBar(
           SnackBar(
             content: GestureDetector(
               onTap: () => _navigateToQuote(message.data),
               behavior: HitTestBehavior.opaque,
               child: Text(notification.body ?? '새로운 알림이 도착했습니다'),
             ),
-            duration: const Duration(seconds: 4),
+            duration: const Duration(seconds: 3),
           ),
         );
+        Future.delayed(const Duration(seconds: 3), controller.close);
       }
     }
   }

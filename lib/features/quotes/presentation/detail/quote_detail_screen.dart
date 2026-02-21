@@ -59,6 +59,16 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
     super.initState();
     _quote = widget.quote;
     _scheduleAutoHideActions();
+    _recordView();
+  }
+
+  void _recordView() {
+    final uid = ref.read(authUidProvider).valueOrNull;
+    if (uid == null) return;
+    ref
+        .read(_interactionsRepoProvider)
+        .incrementViewCount(quoteId: widget.quote.id)
+        .ignore();
   }
 
   @override

@@ -47,3 +47,8 @@ app.*.map.json
 # Firebase (per-flavor)
 /android/app/src/**/google-services.json
 data_backup/
+
+# Release signing (NEVER commit)
+/android/key.properties
+/android/*.keystore
+/android/*.jks

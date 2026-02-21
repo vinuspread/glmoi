@@ -15,6 +15,12 @@ class InteractionsRepository {
     await callable.call({'quoteId': quoteId});
   }
 
+  Future<void> incrementViewCount({required String quoteId}) async {
+    final callable =
+        FunctionsClient.instance.httpsCallable('incrementViewCount');
+    await callable.call({'quoteId': quoteId});
+  }
+
   Future<bool> reportMalmoiOnce({
     required String quoteId,
     required String reasonCode,
