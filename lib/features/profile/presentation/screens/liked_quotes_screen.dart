@@ -76,7 +76,7 @@ class LikedQuotesScreen extends ConsumerWidget {
               return QuoteFeedCard(
                 quote: quote,
                 onOpenDetail: () async {
-                  await ref.read(adsControllerProvider).onOpenDetail();
+                  await ref.read(adsControllerProvider).onOpenDetail(context);
                   if (!context.mounted) return;
                   context.push('/detail', extra: quote);
                 },

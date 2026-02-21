@@ -25,7 +25,8 @@ class QuoteFeedCard extends ConsumerWidget {
     Widget buildQuoteCard() {
       // "한줄명언" list item: rounded image-backed box + 2-line text.
       return ClipRRect(
-        borderRadius: BorderRadius.circular(AppTheme.radius24), // Consistent radius
+        borderRadius:
+            BorderRadius.circular(AppTheme.radius24), // Consistent radius
 
         child: Stack(
           children: [
@@ -48,26 +49,27 @@ class QuoteFeedCard extends ConsumerWidget {
                   ),
                 ),
               ),
-            
+
             // Stronger gradient for better text readability
 
-            
             // Semi-transparent black overlay for readability
             Positioned.fill(
               child: ColoredBox(
                 color: Colors.black.withOpacity(0.4),
               ),
             ),
-            
+
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24), // More padding
+              padding:
+                  const EdgeInsets.fromLTRB(20, 20, 20, 24), // More padding
               child: Align(
                 alignment: Alignment.bottomLeft,
                 child: Text(
                   quote.content,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: t.textTheme.headlineSmall?.copyWith( // Larger text style
+                  style: t.textTheme.headlineSmall?.copyWith(
+                    // Larger text style
                     fontSize: 18,
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
@@ -109,9 +111,11 @@ class QuoteFeedCard extends ConsumerWidget {
                           imageUrl: quote.imageUrl!,
                           fit: BoxFit.cover,
                           memCacheWidth:
-                              (80 * MediaQuery.devicePixelRatioOf(context)).round(),
+                              (80 * MediaQuery.devicePixelRatioOf(context))
+                                  .round(),
                           memCacheHeight:
-                              (80 * MediaQuery.devicePixelRatioOf(context)).round(),
+                              (80 * MediaQuery.devicePixelRatioOf(context))
+                                  .round(),
                           errorWidget: (_, __, ___) =>
                               const ColoredBox(color: AppTheme.surfaceAlt),
                         ),
@@ -129,7 +133,8 @@ class QuoteFeedCard extends ConsumerWidget {
                           overflow: TextOverflow.ellipsis,
                           style: t.textTheme.bodyLarge?.copyWith(
                             fontSize: 18, // Ensure 18px
-                            fontWeight: FontWeight.w600, // Slightly stronger weight
+                            fontWeight:
+                                FontWeight.w600, // Slightly stronger weight
                             height: 1.6,
                             color: AppTheme.textPrimary,
                           ),
@@ -167,7 +172,7 @@ class QuoteFeedCard extends ConsumerWidget {
           await onOpenDetail!();
           return;
         }
-        await ref.read(adsControllerProvider).onOpenDetail();
+        await ref.read(adsControllerProvider).onOpenDetail(context);
         if (!context.mounted) return;
         context.push('/detail', extra: quote);
       },

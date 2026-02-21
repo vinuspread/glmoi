@@ -133,7 +133,7 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
           );
 
       // 글 작성 후 광고 트리거
-      await ref.read(adsControllerProvider).onPostCreated();
+      await ref.read(adsControllerProvider).onPostCreated(context);
 
       if (!mounted) return;
       context.pop();

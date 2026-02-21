@@ -175,7 +175,8 @@ class _QuoteDetailPagerScreenState
                   _index = i;
                 });
                 // 슬라이드로 다음/이전 글 이동 시도 화면이동 횟수 광고 트리거
-                ref.read(adsControllerProvider).onOpenDetail();
+                // 슬라이드 중에는 context 사용 불가 → overlay 없이 표시
+                ref.read(adsControllerProvider).onOpenDetail(null);
               },
               itemBuilder: (context, index) {
                 final q = _quotes[index];
@@ -603,7 +604,7 @@ class _QuoteDetailPagerScreenState
                             // 공유 후 광고 트리거
                             await ref
                                 .read(adsControllerProvider)
-                                .onShareCompleted();
+                                .onShareCompleted(context);
                           },
                         ),
                       ),

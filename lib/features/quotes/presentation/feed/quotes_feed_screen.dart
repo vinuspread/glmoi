@@ -86,25 +86,27 @@ class QuotesFeedScreen extends ConsumerWidget {
             );
           }
 
-          final isListMode = type == QuoteType.thought || type == QuoteType.malmoi;
+          final isListMode =
+              type == QuoteType.thought || type == QuoteType.malmoi;
 
           return ListView.separated(
             physics: const BouncingScrollPhysics(),
-            padding: isListMode 
-                ? EdgeInsets.zero 
+            padding: isListMode
+                ? EdgeInsets.zero
                 : const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             itemCount: quotes.length,
             separatorBuilder: (_, __) => isListMode
-                ? const Divider(height: 1, thickness: 1, color: Color(0xFFF5F5F5))
+                ? const Divider(
+                    height: 1, thickness: 1, color: Color(0xFFF5F5F5))
                 : const SizedBox(height: 16),
             itemBuilder: (context, i) {
               final q = quotes[i];
-              
+
               if (isListMode) {
                 return QuoteListTile(
                   quote: q,
                   onTap: () async {
-                    await ref.read(adsControllerProvider).onOpenDetail();
+                    await ref.read(adsControllerProvider).onOpenDetail(context);
                     if (!context.mounted) return;
                     context.push(
                       '/detail',
@@ -117,7 +119,7 @@ class QuotesFeedScreen extends ConsumerWidget {
               return QuoteFeedCard(
                 quote: q,
                 onOpenDetail: () async {
-                  await ref.read(adsControllerProvider).onOpenDetail();
+                  await ref.read(adsControllerProvider).onOpenDetail(context);
                   if (!context.mounted) return;
                   context.push(
                     '/detail',

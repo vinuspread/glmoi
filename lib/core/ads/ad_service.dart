@@ -74,7 +74,10 @@ class AdService {
     await _loadInterstitial(unitId);
   }
 
-  Future<void> maybeShowInterstitialForNavigation(AdConfig config) async {
+  Future<void> maybeShowInterstitialForNavigation(
+    AdConfig config, {
+    Future<void> Function()? beforeShow,
+  }) async {
     if (!config.isInterstitialEnabled) return;
     if (!config.triggerOnNavigation) return;
 
@@ -96,10 +99,14 @@ class AdService {
     if (ad == null) return;
 
     _interstitial = null;
+    await beforeShow?.call();
     ad.show();
   }
 
-  Future<void> maybeShowInterstitialForPost(AdConfig config) async {
+  Future<void> maybeShowInterstitialForPost(
+    AdConfig config, {
+    Future<void> Function()? beforeShow,
+  }) async {
     if (!config.isInterstitialEnabled) return;
     if (!config.triggerOnPost) return;
 
@@ -120,10 +127,14 @@ class AdService {
     if (ad == null) return;
 
     _interstitial = null;
+    await beforeShow?.call();
     ad.show();
   }
 
-  Future<void> maybeShowInterstitialForShare(AdConfig config) async {
+  Future<void> maybeShowInterstitialForShare(
+    AdConfig config, {
+    Future<void> Function()? beforeShow,
+  }) async {
     if (!config.isInterstitialEnabled) return;
     if (!config.triggerOnShare) return;
 
@@ -144,6 +155,7 @@ class AdService {
     if (ad == null) return;
 
     _interstitial = null;
+    await beforeShow?.call();
     ad.show();
   }
 

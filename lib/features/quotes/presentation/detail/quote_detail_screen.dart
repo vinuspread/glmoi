@@ -656,7 +656,7 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                             // 공유 후 광고 트리거
                             await ref
                                 .read(adsControllerProvider)
-                                .onShareCompleted();
+                                .onShareCompleted(context);
                           },
                         ),
                       ),
