@@ -14,6 +14,7 @@ import 'package:app_admin/features/maumsori/presentation/screens/member_manageme
 import 'package:app_admin/features/maumsori/presentation/screens/report_management_screen.dart';
 import 'package:app_admin/features/maumsori/presentation/screens/auto_send_screen.dart';
 import 'package:app_admin/features/maumsori/presentation/screens/settings_screen.dart';
+import 'package:app_admin/features/maumsori/presentation/screens/push_test_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authService = ref.watch(authProvider);
@@ -112,6 +113,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'settings',
             name: 'maumsori_settings',
             builder: (context, state) => const SettingsScreen(),
+          ),
+          GoRoute(
+            path: 'push-test',
+            name: 'maumsori_push_test',
+            builder: (context, state) => const PushTestScreen(),
           ),
         ],
       ),

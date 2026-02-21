@@ -62,6 +62,9 @@ exports.getAdMobStats = (0, https_1.onCall)(async (request) => {
             errors: error.errors,
             stack: error.stack,
         });
+        if (error.message?.startsWith('TOKEN_EXPIRED:')) {
+            throw new https_1.HttpsError('unauthenticated', error.message);
+        }
         if (error.code === 429 || error.status === 429) {
             throw new https_1.HttpsError('resource-exhausted', 'AdMob API rate limit exceeded. Please try again later.');
         }
@@ -82,11 +85,19 @@ exports.updateAdMobStatsDaily = (0, scheduler_1.onSchedule)({
             ...stats,
             lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
             updatedBy: 'scheduler',
+            schedulerError: false,
+            schedulerErrorMessage: null,
+            schedulerErrorAt: null,
         });
         console.log('AdMob stats updated successfully:', stats);
     }
     catch (error) {
         console.error('Failed to update AdMob stats:', error);
+        await admin.firestore().collection('admob_stats').doc('latest').set({
+            schedulerError: true,
+            schedulerErrorMessage: error.message ?? 'Unknown error',
+            schedulerErrorAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
     }
 });
 async function fetchAdMobStats() {
@@ -109,8 +120,20 @@ async function fetchAdMobStats() {
         refresh_token: refresh_token,
     });
     console.log('Refreshing access token...');
-    const { credentials } = await oauth2Client.refreshAccessToken();
-    const accessToken = credentials.access_token;
+    let accessToken;
+    try {
+        const { credentials } = await oauth2Client.refreshAccessToken();
+        accessToken = credentials.access_token;
+    }
+    catch (tokenError) {
+        const isTokenExpired = tokenError.message?.includes('invalid_grant') ||
+            tokenError.message?.includes('Token has been expired') ||
+            tokenError.message?.includes('token_expired');
+        if (isTokenExpired) {
+            throw new Error('TOKEN_EXPIRED: AdMob Refresh Token이 만료되었습니다. get-admob-token.js를 실행하여 재발급 후 Firestore config/admob_oauth를 업데이트하세요.');
+        }
+        throw new Error(`Access token 갱신 실패: ${tokenError.message}`);
+    }
     console.log('Access token obtained');
     const today = new Date();
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);

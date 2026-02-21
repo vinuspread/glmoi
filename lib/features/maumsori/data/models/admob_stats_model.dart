@@ -8,6 +8,9 @@ class AdMobStatsModel {
   final String startDate;
   final String endDate;
   final DateTime lastUpdated;
+  final bool schedulerError;
+  final String? schedulerErrorMessage;
+  final DateTime? schedulerErrorAt;
 
   const AdMobStatsModel({
     required this.totalEarnings,
@@ -17,6 +20,9 @@ class AdMobStatsModel {
     required this.startDate,
     required this.endDate,
     required this.lastUpdated,
+    this.schedulerError = false,
+    this.schedulerErrorMessage,
+    this.schedulerErrorAt,
   });
 
   factory AdMobStatsModel.fromFirestore(DocumentSnapshot doc) {
@@ -30,8 +36,15 @@ class AdMobStatsModel {
       endDate: data['dateRange']?['endDate'] as String? ?? '',
       lastUpdated:
           (data['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      schedulerError: data['schedulerError'] as bool? ?? false,
+      schedulerErrorMessage: data['schedulerErrorMessage'] as String?,
+      schedulerErrorAt: (data['schedulerErrorAt'] as Timestamp?)?.toDate(),
     );
   }
+
+  bool get isTokenExpired =>
+      schedulerError == true &&
+      (schedulerErrorMessage?.startsWith('TOKEN_EXPIRED:') ?? false);
 
   String get formattedEarnings => '\$${totalEarnings.toStringAsFixed(2)}';
   String get formattedEcpm => '\$${ecpm.toStringAsFixed(2)}';

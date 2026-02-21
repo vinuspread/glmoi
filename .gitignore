@@ -43,3 +43,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Sensitive credentials (local-only helper scripts)
+functions/.env.admob
+functions/get-admob-token.js
+functions/save-token-to-firestore.js
+# Firebase service account key (if present locally)
+*.json.secret
+glmoi-*.json

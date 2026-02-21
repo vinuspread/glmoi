@@ -53,6 +53,9 @@ class QuoteRepository {
     return 'official_${quote.appId}_${contentTypeToFirestore(quote.type)}_$h';
   }
 
+  static const int _streamLimit = 500;
+  static const int _reportedStreamLimit = 200;
+
   // 전체 글 목록 (공식 콘텐츠만, 타입별 필터링 가능)
   Stream<List<QuoteModel>> getQuotes({ContentType? type}) {
     Query query = _firestore
@@ -64,7 +67,7 @@ class QuoteRepository {
       query = query.where('type', isEqualTo: contentTypeToFirestore(type));
     }
 
-    query = query.orderBy('createdAt', descending: true);
+    query = query.orderBy('createdAt', descending: true).limit(_streamLimit);
 
     return query.snapshots().map(
       (snapshot) =>
@@ -84,6 +87,8 @@ class QuoteRepository {
       query = query.where('is_approved', isEqualTo: isApproved);
     }
 
+    query = query.limit(_streamLimit);
+
     return query.snapshots().map(
       (snapshot) =>
           snapshot.docs.map((doc) => QuoteModel.fromFirestore(doc)).toList(),
@@ -98,6 +103,7 @@ class QuoteRepository {
         .where('report_count', isGreaterThan: 0)
         .orderBy('report_count', descending: true)
         .orderBy('createdAt', descending: true)
+        .limit(_reportedStreamLimit)
         .snapshots()
         .map(
           (snapshot) => snapshot.docs

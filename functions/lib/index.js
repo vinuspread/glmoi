@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.badWordsValidate = exports.testAdMobAPI = exports.updateAdMobStatsDaily = exports.getAdMobStats = exports.triggerAutoSendNow = exports.executeAutoSend = exports.getAutoSendConfig = exports.saveAutoSendConfig = exports.migrateUserStats = exports.deleteAccount = exports.syncProfileToQuotes = exports.deleteMalmoiPost = exports.updateMalmoiPost = exports.createMalmoiPost = exports.moderateUserMalmoiBadWords = exports.toggleSaveQuote = exports.reactToQuoteOnce = exports.reportMalmoiOnce = exports.incrementShareCount = exports.likeQuoteOnce = exports.kakaoCustomToken = exports.fillImageAssetDerivedUrls = exports.optimizeImageOnUpload = void 0;
+exports.badWordsValidate = exports.sendTestNotification = exports.incrementViewCount = exports.testAdMobAPI = exports.updateAdMobStatsDaily = exports.getAdMobStats = exports.triggerAutoSendNow = exports.executeAutoSend = exports.getAutoSendConfig = exports.saveAutoSendConfig = exports.migrateUserStats = exports.deleteAccount = exports.syncProfileToQuotes = exports.deleteMalmoiPost = exports.updateMalmoiPost = exports.createMalmoiPost = exports.moderateUserMalmoiBadWords = exports.toggleSaveQuote = exports.reactToQuoteOnce = exports.reportMalmoiOnce = exports.incrementShareCount = exports.likeQuoteOnce = exports.kakaoCustomToken = exports.fillImageAssetDerivedUrls = exports.optimizeImageOnUpload = void 0;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
 const badWords_1 = require("./badWords");
@@ -72,6 +72,10 @@ Object.defineProperty(exports, "getAdMobStats", { enumerable: true, get: functio
 Object.defineProperty(exports, "updateAdMobStatsDaily", { enumerable: true, get: function () { return admob_1.updateAdMobStatsDaily; } });
 var admobTest_1 = require("./admobTest");
 Object.defineProperty(exports, "testAdMobAPI", { enumerable: true, get: function () { return admobTest_1.testAdMobAPI; } });
+var viewCount_1 = require("./viewCount");
+Object.defineProperty(exports, "incrementViewCount", { enumerable: true, get: function () { return viewCount_1.incrementViewCount; } });
+var testNotifications_1 = require("./testNotifications");
+Object.defineProperty(exports, "sendTestNotification", { enumerable: true, get: function () { return testNotifications_1.sendTestNotification; } });
 exports.badWordsValidate = (0, https_1.onCall)(async (request) => {
     const text = request.data?.text ?? '';
     if (typeof text !== 'string') {

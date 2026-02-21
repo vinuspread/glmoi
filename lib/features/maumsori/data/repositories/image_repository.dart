@@ -51,6 +51,8 @@ class ImageRepository {
     return '${ts}_$rand$ext';
   }
 
+  static const int _streamLimit = 500;
+
   // 이미지 풀 목록 조회 (최신순 또는 사용빈도순)
   Stream<List<ImageAssetModel>> getImages({String sortBy = 'uploaded_at'}) {
     Query query = _firestore
@@ -63,6 +65,8 @@ class ImageRepository {
     } else {
       query = query.orderBy('uploaded_at', descending: true);
     }
+
+    query = query.limit(_streamLimit);
 
     return query.snapshots().map(
       (snapshot) => snapshot.docs

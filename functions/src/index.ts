@@ -38,6 +38,8 @@ export { saveAutoSendConfig, getAutoSendConfig, executeAutoSend, triggerAutoSend
 
 export { getAdMobStats, updateAdMobStatsDaily } from './admob';
 export { testAdMobAPI } from './admobTest';
+export { incrementViewCount } from './viewCount';
+export { sendTestNotification } from './testNotifications';
 
 export const badWordsValidate = onCall(async (request) => {
   const text = (request.data?.text as string | undefined) ?? '';

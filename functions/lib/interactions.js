@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.reactToQuoteOnce = exports.reportMalmoiOnce = exports.toggleSaveQuote = exports.incrementShareCount = exports.likeQuoteOnce = void 0;
 const firestore_1 = require("firebase-admin/firestore");
 const https_1 = require("firebase-functions/v2/https");
+const notifications_1 = require("./notifications");
 const REGION = 'asia-northeast3';
 function db() {
     // NOTE: admin.initializeApp() is called in src/index.ts.
@@ -65,7 +66,7 @@ exports.likeQuoteOnce = (0, https_1.onCall)({ region: REGION }, async (request) 
         }
         const likeSnap = await tx.get(likeRef);
         if (likeSnap.exists) {
-            return { alreadyLiked: true };
+            return { alreadyLiked: true, authorUid: undefined, quoteType: undefined };
         }
         const quoteData = quoteSnap.data() || {};
         tx.set(likeRef, {
@@ -89,18 +90,50 @@ exports.likeQuoteOnce = (0, https_1.onCall)({ region: REGION }, async (request) 
         tx.set(userRef, {
             liked_quotes_count: firestore_1.FieldValue.increment(1),
         }, { merge: true });
-        return { alreadyLiked: false };
+        return { alreadyLiked: false, authorUid: quoteData.user_uid, quoteType: quoteData.type };
     });
+    if (!result.alreadyLiked && result.authorUid) {
+        const senderName = await (0, notifications_1.getSenderDisplayName)(uid);
+        await (0, notifications_1.sendPushToUser)(result.authorUid, uid, { title: '글모이', body: `${senderName}님이 회원님의 글을 좋아해요` }, { quote_id: quoteId, quote_type: result.quoteType ?? 'quote' });
+    }
     return { ok: true, ...result };
 });
 exports.incrementShareCount = (0, https_1.onCall)({ region: REGION }, async (request) => {
-    requireUid(request);
+    const uid = requireUid(request);
     const quoteId = requireString(request.data?.quoteId, 'quoteId');
+    const quoteSnap = await db().collection('quotes').doc(quoteId).get();
+    if (!quoteSnap.exists) {
+        throw new https_1.HttpsError('not-found', 'quote not found');
+    }
+    const quoteData = quoteSnap.data() || {};
     await db().collection('quotes').doc(quoteId).update({
         share_count: firestore_1.FieldValue.increment(1),
     });
+    const authorUid = quoteData.user_uid;
+    if (authorUid) {
+        const senderName = await (0, notifications_1.getSenderDisplayName)(uid);
+        await (0, notifications_1.sendPushToUser)(authorUid, uid, { title: '글모이', body: `${senderName}님이 회원님의 글을 공유했어요` }, { quote_id: quoteId, quote_type: quoteData.type ?? 'quote' });
+    }
     return { ok: true };
 });
+const SAVED_QUOTE_ALLOWED_FIELDS = [
+    'app_id',
+    'type',
+    'content',
+    'author',
+    'author_name',
+    'author_photo_url',
+    'image_url',
+];
+function sanitizeQuoteData(raw) {
+    const result = {};
+    for (const key of SAVED_QUOTE_ALLOWED_FIELDS) {
+        if (key in raw) {
+            result[key] = raw[key] ?? null;
+        }
+    }
+    return result;
+}
 exports.toggleSaveQuote = (0, https_1.onCall)({ region: REGION }, async (request) => {
     const uid = requireUid(request);
     const quoteId = requireString(request.data?.quoteId, 'quoteId');
@@ -119,10 +152,11 @@ exports.toggleSaveQuote = (0, https_1.onCall)({ region: REGION }, async (request
             return { saved: false };
         }
         else {
-            const quoteData = request.data?.quoteData || {};
+            const rawQuoteData = (request.data?.quoteData ?? {});
+            const safeQuoteData = sanitizeQuoteData(rawQuoteData);
             tx.set(savedRef, {
                 quote_id: quoteId,
-                ...quoteData,
+                ...safeQuoteData,
                 saved_at: firestore_1.FieldValue.serverTimestamp(),
             });
             tx.set(db().collection('users').doc(uid), {
@@ -133,6 +167,13 @@ exports.toggleSaveQuote = (0, https_1.onCall)({ region: REGION }, async (request
     });
     return { ok: true, ...result };
 });
+const REACTION_LABELS = {
+    comfort: '위로받았어요',
+    empathize: '공감해요',
+    good: '좋아요',
+    touched: '감동받았어요',
+    fan: '팬이에요',
+};
 exports.reportMalmoiOnce = (0, https_1.onCall)({ region: REGION }, async (request) => {
     const uid = requireUid(request);
     const quoteId = requireString(request.data?.quoteId, 'quoteId');
@@ -202,5 +243,10 @@ exports.reactToQuoteOnce = (0, https_1.onCall)({ region: REGION }, async (reques
         }
         return { alreadyReacted: false, reactionType, authorUid };
     });
+    if (!result.alreadyReacted && result.authorUid) {
+        const senderName = await (0, notifications_1.getSenderDisplayName)(uid);
+        const label = REACTION_LABELS[reactionType] ?? reactionType;
+        await (0, notifications_1.sendPushToUser)(result.authorUid, uid, { title: '글모이', body: `${senderName}님이 '${label}'로 반응했어요` }, { quote_id: quoteId, quote_type: 'malmoi' });
+    }
     return { ok: true, ...result };
 });

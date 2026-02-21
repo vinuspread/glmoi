@@ -99,6 +99,7 @@ class AdMobStatsCard extends ConsumerWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (stats.schedulerError) _SchedulerErrorBanner(stats: stats),
                   Text(
                     stats.formattedEarnings,
                     style: const TextStyle(
@@ -144,6 +145,44 @@ class AdMobStatsCard extends ConsumerWidget {
                 '오류: $err',
                 style: const TextStyle(color: Colors.red),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SchedulerErrorBanner extends StatelessWidget {
+  final dynamic stats;
+
+  const _SchedulerErrorBanner({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    final isTokenExpired = stats.isTokenExpired as bool;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.shade300),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.orange.shade700,
+            size: 16,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              isTokenExpired
+                  ? '⚠️ Token 만료 — get-admob-token.js 실행 후 Firestore 업데이트 필요'
+                  : '⚠️ 자동 업데이트 실패 — 새로고침 버튼으로 수동 갱신하세요',
+              style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
             ),
           ),
         ],

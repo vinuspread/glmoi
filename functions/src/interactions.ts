@@ -1,5 +1,6 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { getSenderDisplayName, sendPushToUser } from './notifications';
 
 const REGION = 'asia-northeast3';
 
@@ -80,7 +81,7 @@ export const likeQuoteOnce = onCall({ region: REGION }, async (request) => {
 
     const likeSnap = await tx.get(likeRef);
     if (likeSnap.exists) {
-      return { alreadyLiked: true };
+      return { alreadyLiked: true, authorUid: undefined, quoteType: undefined };
     }
 
     const quoteData = quoteSnap.data() || {};
@@ -114,22 +115,69 @@ export const likeQuoteOnce = onCall({ region: REGION }, async (request) => {
       { merge: true }
     );
 
-    return { alreadyLiked: false };
+    return { alreadyLiked: false, authorUid: quoteData.user_uid as string | undefined, quoteType: quoteData.type as string | undefined };
   });
+
+  if (!result.alreadyLiked && result.authorUid) {
+    const senderName = await getSenderDisplayName(uid);
+    await sendPushToUser(
+      result.authorUid,
+      uid,
+      { title: '글모이', body: `${senderName}님이 회원님의 글을 좋아해요` },
+      { quote_id: quoteId, quote_type: result.quoteType ?? 'quote' }
+    );
+  }
 
   return { ok: true, ...result };
 });
 
 export const incrementShareCount = onCall({ region: REGION }, async (request) => {
-  requireUid(request);
+  const uid = requireUid(request);
   const quoteId = requireString(request.data?.quoteId, 'quoteId');
+
+  const quoteSnap = await db().collection('quotes').doc(quoteId).get();
+  if (!quoteSnap.exists) {
+    throw new HttpsError('not-found', 'quote not found');
+  }
+  const quoteData = quoteSnap.data() || {};
 
   await db().collection('quotes').doc(quoteId).update({
     share_count: FieldValue.increment(1),
   });
 
+  const authorUid = quoteData.user_uid as string | undefined;
+  if (authorUid) {
+    const senderName = await getSenderDisplayName(uid);
+    await sendPushToUser(
+      authorUid,
+      uid,
+      { title: '글모이', body: `${senderName}님이 회원님의 글을 공유했어요` },
+      { quote_id: quoteId, quote_type: quoteData.type ?? 'quote' }
+    );
+  }
+
   return { ok: true };
 });
+
+const SAVED_QUOTE_ALLOWED_FIELDS = [
+  'app_id',
+  'type',
+  'content',
+  'author',
+  'author_name',
+  'author_photo_url',
+  'image_url',
+] as const;
+
+function sanitizeQuoteData(raw: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const key of SAVED_QUOTE_ALLOWED_FIELDS) {
+    if (key in raw) {
+      result[key] = raw[key] ?? null;
+    }
+  }
+  return result;
+}
 
 export const toggleSaveQuote = onCall({ region: REGION }, async (request) => {
   const uid = requireUid(request);
@@ -155,10 +203,11 @@ export const toggleSaveQuote = onCall({ region: REGION }, async (request) => {
       );
       return { saved: false };
     } else {
-      const quoteData = request.data?.quoteData || {};
+      const rawQuoteData = (request.data?.quoteData ?? {}) as Record<string, unknown>;
+      const safeQuoteData = sanitizeQuoteData(rawQuoteData);
       tx.set(savedRef, {
         quote_id: quoteId,
-        ...quoteData,
+        ...safeQuoteData,
         saved_at: FieldValue.serverTimestamp(),
       });
       tx.set(
@@ -174,6 +223,14 @@ export const toggleSaveQuote = onCall({ region: REGION }, async (request) => {
 
   return { ok: true, ...result };
 });
+
+const REACTION_LABELS: Record<string, string> = {
+  comfort: '위로받았어요',
+  empathize: '공감해요',
+  good: '좋아요',
+  touched: '감동받았어요',
+  fan: '팬이에요',
+};
 
 export const reportMalmoiOnce = onCall({ region: REGION }, async (request) => {
   const uid = requireUid(request);
@@ -264,6 +321,17 @@ export const reactToQuoteOnce = onCall({ region: REGION }, async (request) => {
 
     return { alreadyReacted: false, reactionType, authorUid };
   });
+
+  if (!result.alreadyReacted && result.authorUid) {
+    const senderName = await getSenderDisplayName(uid);
+    const label = REACTION_LABELS[reactionType] ?? reactionType;
+    await sendPushToUser(
+      result.authorUid,
+      uid,
+      { title: '글모이', body: `${senderName}님이 '${label}'로 반응했어요` },
+      { quote_id: quoteId, quote_type: 'malmoi' }
+    );
+  }
 
   return { ok: true, ...result };
 });
