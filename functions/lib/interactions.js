@@ -246,7 +246,7 @@ exports.reactToQuoteOnce = (0, https_1.onCall)({ region: REGION }, async (reques
     if (!result.alreadyReacted && result.authorUid) {
         const senderName = await (0, notifications_1.getSenderDisplayName)(uid);
         const label = REACTION_LABELS[reactionType] ?? reactionType;
-        await (0, notifications_1.sendPushToUser)(result.authorUid, uid, { title: '글모이', body: `${senderName}님이 '${label}'로 반응했어요` }, { quote_id: quoteId, quote_type: 'malmoi' });
+        await (0, notifications_1.sendPushToUser)(result.authorUid, uid, { title: '글모이', body: `${senderName}님이 '${label}'로 공감했어요` }, { quote_id: quoteId, quote_type: 'malmoi' });
     }
     return { ok: true, ...result };
 });

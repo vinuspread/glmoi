@@ -328,7 +328,7 @@ export const reactToQuoteOnce = onCall({ region: REGION }, async (request) => {
     await sendPushToUser(
       result.authorUid,
       uid,
-      { title: '글모이', body: `${senderName}님이 '${label}'로 반응했어요` },
+      { title: '글모이', body: `${senderName}님이 '${label}'로 공감했어요` },
       { quote_id: quoteId, quote_type: 'malmoi' }
     );
   }

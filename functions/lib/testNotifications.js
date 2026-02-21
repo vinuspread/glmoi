@@ -7,11 +7,11 @@ const messaging_1 = require("firebase-admin/messaging");
 const REGION = 'asia-northeast3';
 const SCENARIO_NOTIFICATION = {
     like: { title: '글모이', body: '테스터님이 회원님의 글을 좋아해요' },
-    react_comfort: { title: '글모이', body: "테스터님이 '위로받았어요'로 반응했어요" },
-    react_empathize: { title: '글모이', body: "테스터님이 '공감해요'로 반응했어요" },
-    react_good: { title: '글모이', body: "테스터님이 '좋아요'로 반응했어요" },
-    react_touched: { title: '글모이', body: "테스터님이 '감동받았어요'로 반응했어요" },
-    react_fan: { title: '글모이', body: "테스터님이 '팬이에요'로 반응했어요" },
+    react_comfort: { title: '글모이', body: "테스터님이 '위로받았어요'로 공감했어요" },
+    react_empathize: { title: '글모이', body: "테스터님이 '공감해요'로 공감했어요" },
+    react_good: { title: '글모이', body: "테스터님이 '좋아요'로 공감했어요" },
+    react_touched: { title: '글모이', body: "테스터님이 '감동받았어요'로 공감했어요" },
+    react_fan: { title: '글모이', body: "테스터님이 '팬이에요'로 공감했어요" },
     share: { title: '글모이', body: '테스터님이 회원님의 글을 공유했어요' },
     view_3: { title: '글모이', body: '회원님의 글을 3명이 읽었어요' },
     view_50: { title: '글모이', body: '회원님의 글을 50명이 읽었어요' },
