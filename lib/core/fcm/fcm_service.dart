@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'local_notification_service.dart';
+import 'notification_prefs_repository.dart';
 
 /// FCM service for handling foreground/background/terminated message events
 /// Unified service that handles both FCM messages and local notification taps
@@ -37,9 +38,17 @@ class FCMService {
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional) {
-        // Subscribe to topic
-        await _messaging.subscribeToTopic('all_users');
-        debugPrint('[FCM] Subscribed to all_users topic');
+        // 자동수신 설정 확인 후 topic 구독 결정 (기본값 true)
+        final autoEnabled =
+            await NotificationPrefsRepository().getAutoContent();
+        if (autoEnabled) {
+          await _messaging.subscribeToTopic('all_users');
+          debugPrint('[FCM] Subscribed to all_users topic');
+        } else {
+          await _messaging.unsubscribeFromTopic('all_users');
+          debugPrint(
+              '[FCM] Auto content disabled — unsubscribed from all_users topic');
+        }
 
         // Get FCM token
         final token = await _messaging.getToken();

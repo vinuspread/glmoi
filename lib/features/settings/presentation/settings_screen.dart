@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_service.dart';
+import '../../../core/fcm/notification_prefs_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/font_scale_provider.dart';
 import '../../../core/backend/functions_client.dart';
@@ -59,7 +60,7 @@ class SettingsScreen extends ConsumerWidget {
                     return Expanded(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: SizedBox(
+                        child: SizedBox(
                           height: 48,
                           child: isSelected
                               ? FilledButton(
@@ -101,6 +102,7 @@ class SettingsScreen extends ConsumerWidget {
               title: '마이페이지',
               onTap: () => context.push('/mypage'),
             ),
+            _AutoContentToggleTile(),
             _SettingsTile(
               icon: Icons.logout,
               title: '로그아웃',
@@ -241,6 +243,38 @@ class _SettingsTile extends StatelessWidget {
             (onTap != null ? const Icon(Icons.chevron_right) : null),
         onTap: onTap,
         enabled: onTap != null,
+      ),
+    );
+  }
+}
+
+class _AutoContentToggleTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final autoEnabled =
+        ref.watch(autoContentEnabledProvider).valueOrNull ?? true;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: AppTheme.cardDecoration(elevated: true),
+      child: ListTile(
+        leading:
+            const Icon(Icons.notifications_outlined, color: AppTheme.accent),
+        title: const Text('좋은글자동수신'),
+        trailing: Switch(
+          value: autoEnabled,
+          onChanged: (value) async {
+            await ref
+                .read(notificationPrefsControllerProvider)
+                .setAutoContent(value);
+          },
+          activeColor: AppTheme.accent,
+        ),
+        onTap: () async {
+          await ref
+              .read(notificationPrefsControllerProvider)
+              .setAutoContent(!autoEnabled);
+        },
       ),
     );
   }
