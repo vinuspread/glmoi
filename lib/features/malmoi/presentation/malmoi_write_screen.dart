@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -65,7 +67,7 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
   final _controller = TextEditingController();
   final _contentFocusNode = FocusNode();
   var _saving = false;
-  String? _selectedBackgroundUrl;
+  _AdminBackgroundImage? _selectedBackground;
   String? _selectedCategory;
   var _selectedLength = MalmoiLength.short;
   var _optionsExpanded = true;
@@ -123,11 +125,21 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
     final content = _controller.text.trim();
     if (content.isEmpty) return;
 
+    // 배경 미선택 시 랜덤 자동 선택
+    String? imageUrl = _selectedBackground?.backgroundUrl;
+    if (imageUrl == null) {
+      final images = ref.read(_adminBackgroundImagesProvider).valueOrNull ?? [];
+      if (images.isNotEmpty) {
+        final picked = images[Random().nextInt(images.length)];
+        imageUrl = picked.backgroundUrl;
+      }
+    }
+
     setState(() => _saving = true);
     try {
       await ref.read(_quotesRepoProvider).createMalmoiPost(
             content: content,
-            imageUrl: _selectedBackgroundUrl,
+            imageUrl: imageUrl,
             category: cat,
             malmoiLength: _selectedLength,
           );
@@ -412,29 +424,47 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
                                         final selected =
                                             await _pickBackgroundImage(
                                           context,
-                                          selectedUrl: _selectedBackgroundUrl,
+                                          selected: _selectedBackground,
                                         );
                                         if (!mounted) return;
                                         if (selected == null) return;
-                                        setState(() => _selectedBackgroundUrl =
-                                            selected.isEmpty ? null : selected);
+                                        setState(() => _selectedBackground =
+                                            selected.backgroundUrl.isEmpty
+                                                ? null
+                                                : selected);
                                       },
                                 style: OutlinedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 20, vertical: 12),
                                 ),
                                 child: Text(
-                                  _selectedBackgroundUrl != null
+                                  _selectedBackground != null
                                       ? '배경 변경'
                                       : '배경 선택',
                                   style: const TextStyle(fontSize: 16),
                                 ),
                               ),
-                              if (_selectedBackgroundUrl != null) ...[
+                              if (_selectedBackground != null) ...[
                                 const SizedBox(width: 8),
+                                // 선택한 배경 썸네일 — 버튼과 동일한 높이
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: SizedBox(
+                                    height: 44,
+                                    width: 44 * 9 / 16,
+                                    child: CachedNetworkImage(
+                                      imageUrl:
+                                          _selectedBackground!.thumbnailUrl,
+                                      fit: BoxFit.cover,
+                                      errorWidget: (_, __, ___) =>
+                                          const ColoredBox(
+                                              color: AppTheme.surfaceAlt),
+                                    ),
+                                  ),
+                                ),
                                 IconButton(
                                   onPressed: () => setState(
-                                      () => _selectedBackgroundUrl = null),
+                                      () => _selectedBackground = null),
                                   icon: const Icon(Icons.close_rounded),
                                   tooltip: '배경 제거',
                                 ),
@@ -504,11 +534,15 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
     );
   }
 
-  Future<String?> _pickBackgroundImage(
+  /// 배경 이미지 선택 bottom sheet.
+  /// - null 반환: 사용자가 dismiss (변경 없음)
+  /// - backgroundUrl이 빈 객체 반환: '선택 안함' 클릭 (배경 제거)
+  /// - 정상 객체 반환: 이미지 선택
+  Future<_AdminBackgroundImage?> _pickBackgroundImage(
     BuildContext context, {
-    required String? selectedUrl,
+    required _AdminBackgroundImage? selected,
   }) {
-    return showModalBottomSheet<String>(
+    return showModalBottomSheet<_AdminBackgroundImage>(
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
@@ -531,7 +565,11 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
                     ),
                     const Spacer(),
                     TextButton(
-                      onPressed: () => Navigator.pop(context, ''),
+                      onPressed: () => Navigator.pop(
+                        context,
+                        const _AdminBackgroundImage(
+                            thumbnailUrl: '', backgroundUrl: ''),
+                      ),
                       child: const Text('선택 안함'),
                     ),
                   ],
@@ -567,12 +605,9 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
                             itemBuilder: (context, i) {
                               final img = images[i];
                               final isSelected =
-                                  selectedUrl == img.backgroundUrl;
+                                  selected?.backgroundUrl == img.backgroundUrl;
                               return GestureDetector(
-                                onTap: () => Navigator.pop(
-                                  context,
-                                  img.backgroundUrl,
-                                ),
+                                onTap: () => Navigator.pop(context, img),
                                 child: ClipRRect(
                                   borderRadius:
                                       BorderRadius.circular(AppTheme.radius16),
