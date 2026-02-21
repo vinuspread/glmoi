@@ -27,6 +27,10 @@ class SettingsScreen extends ConsumerWidget {
           // 글모이 설정 섹션
           const _SectionHeader(title: '글모이 설정'),
           const SizedBox(height: 8),
+          if (isLoggedIn) ...[
+            _AutoContentToggleTile(),
+            const SizedBox(height: 8),
+          ],
           Container(
             decoration: AppTheme.cardDecoration(elevated: true),
             padding: const EdgeInsets.all(16),
@@ -102,7 +106,6 @@ class SettingsScreen extends ConsumerWidget {
               title: '마이페이지',
               onTap: () => context.push('/mypage'),
             ),
-            _AutoContentToggleTile(),
             _SettingsTile(
               icon: Icons.logout,
               title: '로그아웃',
@@ -260,7 +263,7 @@ class _AutoContentToggleTile extends ConsumerWidget {
       child: ListTile(
         leading:
             const Icon(Icons.notifications_outlined, color: AppTheme.accent),
-        title: const Text('좋은글자동수신'),
+        title: const Text('좋은글 자동 수신'),
         trailing: Switch(
           value: autoEnabled,
           onChanged: (value) async {
