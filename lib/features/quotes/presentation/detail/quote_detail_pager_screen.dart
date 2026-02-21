@@ -132,7 +132,7 @@ class _QuoteDetailPagerScreenState
     final isLiked = ref.watch(
       likedQuotesProvider.select((s) => s.contains(quote.id)),
     );
-    final isSaved = ref.watch(isSavedProvider(quote.id)).value ?? false;
+    final isSaved = ref.watch(isSavedProvider(quote.id));
 
     final showReactions = quote.type == QuoteType.malmoi;
     final myReaction = showReactions
@@ -528,12 +528,21 @@ class _QuoteDetailPagerScreenState
                               return;
                             }
 
-                            final controller =
-                                ref.read(savedQuotesControllerProvider);
+                            // Optimistic UI update
+                            final notifier =
+                                ref.read(savedQuotesNotifierProvider.notifier);
+                            final wasSaved = isSaved;
+                            if (wasSaved) {
+                              notifier.unmarkSaved(quote.id);
+                            } else {
+                              notifier.markSaved(quote.id);
+                            }
 
                             final messenger = ScaffoldMessenger.of(context);
                             try {
-                              final saved = await controller.toggleSave(quote);
+                              final saved = await ref
+                                  .read(savedQuotesControllerProvider)
+                                  .toggleSave(quote);
                               if (!context.mounted) return;
                               messenger.showSnackBar(
                                 SnackBar(
@@ -542,7 +551,12 @@ class _QuoteDetailPagerScreenState
                               );
                             } catch (e) {
                               if (!context.mounted) return;
-                              await controller.toggleSave(quote);
+                              // Rollback on error
+                              if (wasSaved) {
+                                notifier.markSaved(quote.id);
+                              } else {
+                                notifier.unmarkSaved(quote.id);
+                              }
                               messenger.showSnackBar(
                                 SnackBar(content: Text('담기 실패: $e')),
                               );
@@ -814,7 +828,9 @@ class _ReactionBubbleItem extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: selected ? const Color(0xFFFD2F79) : const Color(0xFF9CA3AF),
+                  color: selected
+                      ? const Color(0xFFFD2F79)
+                      : const Color(0xFF9CA3AF),
                 ),
               ),
             ],

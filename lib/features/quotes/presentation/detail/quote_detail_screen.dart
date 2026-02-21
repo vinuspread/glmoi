@@ -153,7 +153,7 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
     final isLiked = ref.watch(
       likedQuotesProvider.select((s) => s.contains(quote.id)),
     );
-    final isSaved = ref.watch(isSavedProvider(quote.id)).value ?? false;
+    final isSaved = ref.watch(isSavedProvider(quote.id));
 
     final myReaction = showReactions
         ? ref.watch(myReactionProvider(quote.id)).valueOrNull
@@ -586,13 +586,21 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                               return;
                             }
 
-                            // Optimistic UI update (toggle current state)
-                            final controller =
-                                ref.read(savedQuotesControllerProvider);
+                            // Optimistic UI update
+                            final notifier =
+                                ref.read(savedQuotesNotifierProvider.notifier);
+                            final wasSaved = isSaved;
+                            if (wasSaved) {
+                              notifier.unmarkSaved(quote.id);
+                            } else {
+                              notifier.markSaved(quote.id);
+                            }
 
                             final messenger = ScaffoldMessenger.of(context);
                             try {
-                              final saved = await controller.toggleSave(quote);
+                              final saved = await ref
+                                  .read(savedQuotesControllerProvider)
+                                  .toggleSave(quote);
                               if (!mounted) return;
                               messenger.showSnackBar(
                                 SnackBar(
@@ -601,8 +609,12 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                               );
                             } catch (e) {
                               if (!mounted) return;
-                              // Rollback on error (toggle back)
-                              await controller.toggleSave(quote);
+                              // Rollback on error
+                              if (wasSaved) {
+                                notifier.markSaved(quote.id);
+                              } else {
+                                notifier.unmarkSaved(quote.id);
+                              }
                               messenger.showSnackBar(
                                 SnackBar(content: Text('담기 실패: $e')),
                               );
@@ -1081,7 +1093,9 @@ class _ReactionBubbleItem extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: selected ? const Color(0xFFFD2F79) : const Color(0xFF9CA3AF),
+                  color: selected
+                      ? const Color(0xFFFD2F79)
+                      : const Color(0xFF9CA3AF),
                 ),
               ),
             ],
