@@ -7,8 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/ads/ads_controller.dart';
 import '../../../../core/ads/banner_ad_widget.dart';
 import '../../../../core/auth/auth_service.dart';
-import '../../../../core/share/kakao_talk_share_service.dart';
-import '../../../../core/share/share_sheet.dart';
+import '../../../../core/share/share_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/interactions_repository.dart';
 import '../../data/quotes_repository.dart';
@@ -570,21 +569,10 @@ class _QuoteDetailPagerScreenState
                             }
                             final author =
                                 (quote.authorName ?? quote.author).trim();
-                            final plainText = author.isEmpty
-                                ? quote.content
-                                : '${quote.content}\n\n- $author -';
 
-                            final shared = await showShareSheet(
-                              context: context,
-                              content: KakaoTalkShareContent(
-                                text: plainText,
-                                title: '좋은 글 모음',
-                                description: quote.content,
-                                imageUrl: quote.imageUrl,
-                                likeCount: quote.likeCount,
-                                shareCount: quote.shareCount,
-                              ),
-                              plainText: plainText,
+                            final shared = await ShareService.shareQuote(
+                              content: quote.content,
+                              author: author,
                             );
 
                             if (!shared) return;
