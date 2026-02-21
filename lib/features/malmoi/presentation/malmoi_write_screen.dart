@@ -198,6 +198,8 @@ class _MalmoiWriteScreenState extends ConsumerState<MalmoiWriteScreen> {
     final uidAsync = ref.watch(authUidProvider);
     final isLoggedIn = uidAsync.valueOrNull != null;
     final appConfigAsync = ref.watch(appConfigProvider);
+    // 랜덤 배경 자동선택을 위해 항상 미리 로드
+    ref.watch(_adminBackgroundImagesProvider);
 
     final isKeyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
     final isContentFocused = _contentFocusNode.hasFocus;
