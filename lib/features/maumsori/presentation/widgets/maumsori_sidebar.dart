@@ -86,12 +86,12 @@ class MaumSoriSidebar extends StatelessWidget {
               route: '/maumsori/settings',
               isActive: activeRoute == '/maumsori/settings',
             ),
-            _SidebarItem(
-              icon: Icons.notifications_outlined,
-              label: '알림 테스트',
-              route: '/maumsori/push-test',
-              isActive: activeRoute == '/maumsori/push-test',
-            ),
+            // _SidebarItem(
+            //   icon: Icons.notifications_outlined,
+            //   label: '알림 테스트',
+            //   route: '/maumsori/push-test',
+            //   isActive: activeRoute == '/maumsori/push-test',
+            // ),
           ]),
           const Spacer(),
           Padding(
