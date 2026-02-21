@@ -109,13 +109,18 @@ async function selectRandomQuote(): Promise<any | null> {
   return quotes[randomIndex];
 }
 
-/**
- * FCM 토픽으로 푸시 알림 발송
- */
 async function sendPushNotification(quote: any) {
   const messaging = admin.messaging();
 
+  const contentPreview = (quote.content || '').substring(0, 100);
+  const author = (quote.author || '').trim();
+  const body = author ? `${contentPreview}\n\n- ${author} -` : contentPreview;
+
   const message = {
+    notification: {
+      title: '오늘의 좋은글',
+      body,
+    },
     data: {
       type: 'auto_send',
       quote_id: quote.id,
@@ -126,6 +131,9 @@ async function sendPushNotification(quote: any) {
     },
     android: {
       priority: 'high' as const,
+      notification: {
+        channelId: 'glmoi_notifications',
+      },
     },
     topic: 'all_users',
   };
@@ -223,11 +231,11 @@ export const triggerAutoSendNow = onCall(async (request) => {
 
 /**
  * 자동발송 실행 (Cloud Scheduler 호출)
- * 매시간 실행되며, 설정된 시간과 일치하면 발송
+ * 매 분 실행되며, 설정된 시간과 일치하면 발송
  */
 export const executeAutoSend = onSchedule(
   {
-    schedule: 'every 1 hours', // 매시간 실행
+    schedule: 'every 1 minutes',
     timeZone: 'Asia/Seoul',
   },
   async (event) => {
@@ -257,16 +265,22 @@ export const executeAutoSend = onSchedule(
       return;
     }
 
-    // 현재 시간 (HH:mm)
+    // new Date()는 UTC이므로 Intl.DateTimeFormat으로 KST 변환 필요
     const now = new Date();
-    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const kstFormatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Seoul',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    const currentTime = kstFormatter.format(now);
 
     // 발송 시간과 일치하는지 확인
     const shouldSend =
       currentTime === config.first_send_time ||
       (config.second_send_time && currentTime === config.second_send_time);
 
-    logger.info('Time check', {
+    logger.info('Time check (KST)', {
       currentTime,
       firstSendTime: config.first_send_time,
       secondSendTime: config.second_send_time || 'N/A',
