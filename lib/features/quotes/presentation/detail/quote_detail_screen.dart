@@ -940,8 +940,6 @@ class _TopReactionButton extends StatefulWidget {
 }
 
 class _TopReactionButtonState extends State<_TopReactionButton> {
-  bool _showBubble = false;
-
   static const _items = <(ReactionType type, String label, String asset)>[
     (ReactionType.comfort, '위로받았어요', 'assets/icons/reactions/comfort.svg'),
     (ReactionType.empathize, '공감해요', 'assets/icons/reactions/empathize.svg'),
@@ -950,103 +948,82 @@ class _TopReactionButtonState extends State<_TopReactionButton> {
     (ReactionType.fan, '팬이예요', 'assets/icons/reactions/fan.svg'),
   ];
 
+  void _showReactionSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF1A1F2E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0x33FFFFFF),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Text(
+                  '공감 남기기',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const Divider(height: 1, thickness: 1, color: Color(0x1AFFFFFF)),
+              for (int i = 0; i < _items.length; i++) ...[
+                _ReactionBubbleItem(
+                  label: _items[i].$2,
+                  asset: _items[i].$3,
+                  count: widget.quote.reactionCounts[
+                          reactionTypeToFirestore(_items[i].$1)] ??
+                      0,
+                  selected: widget.myReaction == _items[i].$1,
+                  disabled: widget.myReaction != null &&
+                      widget.myReaction != _items[i].$1,
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await widget.onReact(_items[i].$1);
+                  },
+                ),
+                if (i < _items.length - 1)
+                  const Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: Color(0x1AFFFFFF),
+                  ),
+              ],
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final totalReactions = widget.quote.reactionCounts.values
         .fold<int>(0, (sum, count) => sum + count);
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        // Main button (top pill style)
-        _TopPillButton(
-          label: '공감 $totalReactions',
-          textColor: widget.textColor ??
-              (widget.myReaction != null ? AppTheme.accent : Colors.white),
-          backgroundColor: widget.backgroundColor,
-          onPressed: () {
-            setState(() => _showBubble = !_showBubble);
-          },
-        ),
-
-        // Floating reaction bubble menu (vertical stack)
-        if (_showBubble) ...[
-          // Menu (first, so it's on top)
-          Positioned(
-            top: 52,
-            right: 0,
-            child: TweenAnimationBuilder<double>(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
-              tween: Tween(begin: 0.0, end: 1.0),
-              builder: (context, value, child) {
-                return Transform.scale(
-                  scale: value,
-                  alignment: Alignment.topRight,
-                  child: Opacity(
-                    opacity: value,
-                    child: child,
-                  ),
-                );
-              },
-              child: Container(
-                width: 200,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1A1F2E),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0x33FFFFFF)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x66000000),
-                      blurRadius: 24,
-                      offset: Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (int i = 0; i < _items.length; i++) ...[
-                      _ReactionBubbleItem(
-                        label: _items[i].$2,
-                        asset: _items[i].$3,
-                        count: widget.quote.reactionCounts[
-                                reactionTypeToFirestore(_items[i].$1)] ??
-                            0,
-                        selected: widget.myReaction == _items[i].$1,
-                        disabled: widget.myReaction != null &&
-                            widget.myReaction != _items[i].$1,
-                        onTap: () async {
-                          setState(() => _showBubble = false);
-                          await widget.onReact(_items[i].$1);
-                        },
-                      ),
-                      if (i < _items.length - 1)
-                        const Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: Color(0x1AFFFFFF),
-                        ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Backdrop to close (behind menu)
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTap: () => setState(() => _showBubble = false),
-              child: IgnorePointer(
-                ignoring: true,
-                child: Container(color: Colors.transparent),
-              ),
-            ),
-          ),
-        ],
-      ],
+    return _TopPillButton(
+      label: '공감 $totalReactions',
+      textColor: widget.textColor ??
+          (widget.myReaction != null ? AppTheme.accent : Colors.white),
+      backgroundColor: widget.backgroundColor,
+      onPressed: _showReactionSheet,
     );
   }
 }
