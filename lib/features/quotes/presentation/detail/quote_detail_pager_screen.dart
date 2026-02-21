@@ -758,7 +758,7 @@ class _TopReactionButtonState extends State<_TopReactionButton> {
     return _TopPillButton(
       label: '공감 $totalReactions',
       textColor: widget.textColor ??
-          (widget.myReaction != null ? AppTheme.accent : Colors.white),
+          (widget.myReaction != null ? const Color(0xFFFD2F79) : Colors.white),
       backgroundColor: widget.backgroundColor,
       onPressed: _showReactionSheet,
     );
@@ -805,7 +805,7 @@ class _ReactionBubbleItem extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                    color: selected ? AppTheme.accent : Colors.white,
+                    color: selected ? const Color(0xFFFD2F79) : Colors.white,
                   ),
                 ),
               ),
@@ -814,7 +814,7 @@ class _ReactionBubbleItem extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: selected ? AppTheme.accent : const Color(0xFF9CA3AF),
+                  color: selected ? const Color(0xFFFD2F79) : const Color(0xFF9CA3AF),
                 ),
               ),
             ],
