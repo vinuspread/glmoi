@@ -124,7 +124,8 @@ class FCMService {
       debugPrint('[FCM Foreground] Title: ${notification.title}');
       debugPrint('[FCM Foreground] Body: ${notification.body}');
       debugPrint(
-          '[FCM Foreground] Image: ${notification.android?.imageUrl ?? notification.apple?.imageUrl ?? 'none'}');
+        '[FCM Foreground] Image: ${notification.android?.imageUrl ?? notification.apple?.imageUrl ?? 'none'}',
+      );
 
       if (_navigatorKey == null) {
         debugPrint('[FCM Foreground] Navigator key is null');
@@ -135,10 +136,10 @@ class FCMService {
       if (context != null && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(notification.body ?? '새로운 알림이 도착했습니다'),
-            action: SnackBarAction(
-              label: '보기',
-              onPressed: () => _navigateToQuote(message.data),
+            content: GestureDetector(
+              onTap: () => _navigateToQuote(message.data),
+              behavior: HitTestBehavior.opaque,
+              child: Text(notification.body ?? '새로운 알림이 도착했습니다'),
             ),
             duration: const Duration(seconds: 4),
           ),
@@ -160,7 +161,8 @@ class FCMService {
     final message = await _messaging.getInitialMessage();
     if (message != null) {
       debugPrint(
-          '[FCM Initial] App launched from notification: ${message.messageId}');
+        '[FCM Initial] App launched from notification: ${message.messageId}',
+      );
       debugPrint('[FCM Initial] Data: ${message.data}');
 
       // Delay navigation until app is fully initialized
