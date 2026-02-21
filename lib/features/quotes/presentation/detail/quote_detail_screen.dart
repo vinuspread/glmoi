@@ -345,7 +345,7 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                               if (!mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('이미 반응을 남겼어요.'),
+                                  content: Text('이미 공감을 남겼어요.'),
                                 ),
                               );
                               return;
@@ -384,7 +384,7 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                                 });
                                 messenger.showSnackBar(
                                   const SnackBar(
-                                    content: Text('이미 반응을 남겼어요.'),
+                                    content: Text('이미 공감을 남겼어요.'),
                                   ),
                                 );
                               }
@@ -400,7 +400,7 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                                 );
                               });
                               messenger.showSnackBar(
-                                SnackBar(content: Text('반응 실패: $e')),
+                                SnackBar(content: Text('공감 실패: $e')),
                               );
                             }
                           },
@@ -960,7 +960,7 @@ class _TopReactionButtonState extends State<_TopReactionButton> {
       children: [
         // Main button (top pill style)
         _TopPillButton(
-          label: '반응 $totalReactions',
+          label: '공감 $totalReactions',
           textColor: widget.textColor ??
               (widget.myReaction != null ? AppTheme.accent : Colors.white),
           backgroundColor: widget.backgroundColor,

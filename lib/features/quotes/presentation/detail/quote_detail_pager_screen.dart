@@ -299,7 +299,7 @@ class _QuoteDetailPagerScreenState
                               if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('이미 반응을 남겼어요.'),
+                                  content: Text('이미 공감을 남겼어요.'),
                                 ),
                               );
                               return;
@@ -340,7 +340,7 @@ class _QuoteDetailPagerScreenState
                                 });
                                 messenger.showSnackBar(
                                   const SnackBar(
-                                    content: Text('이미 반응을 남겼어요.'),
+                                    content: Text('이미 공감을 남겼어요.'),
                                   ),
                                 );
                               }
@@ -356,7 +356,7 @@ class _QuoteDetailPagerScreenState
                                   );
                                 });
                                 messenger.showSnackBar(
-                                  SnackBar(content: Text('반응 실패: $e')),
+                                  SnackBar(content: Text('공감 실패: $e')),
                                 );
                               }
                             }
@@ -711,7 +711,7 @@ class _TopReactionButtonState extends State<_TopReactionButton> {
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 child: Text(
-                  '반응 남기기',
+                  '공감 남기기',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -756,7 +756,7 @@ class _TopReactionButtonState extends State<_TopReactionButton> {
         .fold<int>(0, (sum, count) => sum + count);
 
     return _TopPillButton(
-      label: '반응 $totalReactions',
+      label: '공감 $totalReactions',
       textColor: widget.textColor ??
           (widget.myReaction != null ? AppTheme.accent : Colors.white),
       backgroundColor: widget.backgroundColor,
