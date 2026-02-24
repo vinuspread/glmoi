@@ -31,8 +31,13 @@ function parseString(raw: unknown, name: string, opts?: { max?: number; allowEmp
 async function assertCategoryAllowed(category: string): Promise<void> {
   const snap = await getFirestore().collection('config').doc('app_config').get();
   const data = snap.data() || {};
-  const categories = Array.isArray(data.categories) ? data.categories : [];
-  if (!categories.includes(category)) {
+  const categories = Array.isArray(data.categories)
+    ? data.categories
+      .filter((v): v is string => typeof v === 'string')
+      .map((v) => v.trim())
+      .filter((v) => v.length > 0)
+    : [];
+  if (!categories.includes(category.trim())) {
     throw new HttpsError('invalid-argument', 'invalid category');
   }
 }
@@ -65,7 +70,7 @@ export const createMalmoiPost = onCall(
     }
 
     const content = parseString(request.data?.content, 'content', { max: 2000 });
-    const category = parseString(request.data?.category, 'category', { max: 20 });
+    const category = parseString(request.data?.category, 'category', { max: 40 });
     const malmoiLength = parseLength(request.data?.malmoi_length);
     const imageUrl = parseString(request.data?.image_url ?? '', 'image_url', { max: 500, allowEmpty: true });
     const author = parseString(request.data?.author ?? '', 'author', { max: 50, allowEmpty: true });
