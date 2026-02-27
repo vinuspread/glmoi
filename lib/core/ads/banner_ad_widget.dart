@@ -22,6 +22,10 @@ class _BottomBannerAdState extends ConsumerState<BottomBannerAd> {
   ProviderSubscription<AsyncValue<AdConfig>>? _configSub;
   Timer? _retryTimer;
 
+  void _log(String message) {
+    debugPrint('[Ads][Banner] $message');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -33,6 +37,10 @@ class _BottomBannerAdState extends ConsumerState<BottomBannerAd> {
           final unitId = config.bannerUnitIdForPlatform();
           final enabled = config.isBannerEnabled && unitId.isNotEmpty;
           if (!enabled) {
+            _log(
+              'disabled or missing unit id '
+              '(isBannerEnabled=${config.isBannerEnabled}, unitIdEmpty=${unitId.isEmpty})',
+            );
             _disposeAd();
             return;
           }
@@ -61,6 +69,8 @@ class _BottomBannerAdState extends ConsumerState<BottomBannerAd> {
     _unitId = unitId;
     if (mounted) setState(() {});
 
+    _log('loading banner ad (unitId=$unitId)');
+
     await ref.read(adServiceProvider).ensureInitialized();
     if (!mounted) return;
 
@@ -71,11 +81,20 @@ class _BottomBannerAdState extends ConsumerState<BottomBannerAd> {
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           if (!mounted) return;
+          _log('banner ad loaded successfully');
           setState(() {
             _loaded = true;
           });
         },
         onAdFailedToLoad: (ad, err) {
+          _log(
+            'banner ad failed to load '
+            '(code=${err.code}, domain=${err.domain}, message=${err.message})',
+          );
+          final responseId = err.responseInfo?.responseId;
+          if (responseId != null && responseId.isNotEmpty) {
+            _log('responseId=$responseId');
+          }
           ad.dispose();
           if (!mounted) return;
           setState(() {

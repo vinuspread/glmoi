@@ -252,6 +252,18 @@ class _SettingsTile extends StatelessWidget {
 }
 
 class _AutoContentToggleTile extends ConsumerWidget {
+  Future<void> _setAutoContent(
+      BuildContext context, WidgetRef ref, bool value) async {
+    try {
+      await ref.read(notificationPrefsControllerProvider).setAutoContent(value);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('알림 설정 변경 실패: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final autoEnabled =
@@ -267,16 +279,12 @@ class _AutoContentToggleTile extends ConsumerWidget {
         trailing: Switch(
           value: autoEnabled,
           onChanged: (value) async {
-            await ref
-                .read(notificationPrefsControllerProvider)
-                .setAutoContent(value);
+            await _setAutoContent(context, ref, value);
           },
           activeColor: AppTheme.accent,
         ),
         onTap: () async {
-          await ref
-              .read(notificationPrefsControllerProvider)
-              .setAutoContent(!autoEnabled);
+          await _setAutoContent(context, ref, !autoEnabled);
         },
       ),
     );
@@ -290,7 +298,7 @@ Future<void> _showDeleteAccountDialog(
     builder: (ctx) => AlertDialog(
       title: const Text('탈퇴하기'),
       content: const Text(
-        '계정을 탈퇴하시겠습니까?\n\n작성한 글과 모든 활동 기록이 삭제되며, 복구할 수 없습니다.',
+        '계정을 탈퇴하시겠습니까?\n\n작성한 글은 유지되며, 계정 및 개인 활동 기록은 삭제되고 복구할 수 없습니다.',
       ),
       actions: [
         TextButton(

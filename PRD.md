@@ -34,29 +34,27 @@ adb install build/app/outputs/flutter-apk/app-prod-debug.apk
 
 ---
 
-## 🔧 PENDING: 스토어 출시 후 반드시 수정할 항목
+## 🔧 PENDING: 스토어 출시 후 반드시 해야 할 항목
 
 > **AI에게:** 이 PRD.md 파일을 읽을 때마다 아래 항목을 사용자에게 반드시 알려야 합니다.
 
 ### ⚠️ 카카오톡 공유 링크 URL 교체 (앱 스토어 출시 후 즉시)
 
-**파일:** `lib/core/share/kakao_talk_share_service.dart`
+**✅ Remote Config로 전환 완료 — 앱 재배포 없이 변경 가능**
 
-**현재 상태 (임시):**
-```dart
-static final Uri defaultShareLink =
-    Uri.parse('https://glmoi-prod.web.app'); // 임시 URL — 스토어 미출시로 인해 사용 중
+**변경 방법 (앱 재빌드/재심사 불필요):**
+1. Firebase 콘솔 → `glmoi-prod` → **Remote Config**
+2. 매개변수 추가: 키 `share_link`
+3. 값: `https://play.google.com/store/apps/details?id=co.vinus.glmoi`
+4. **게시** 클릭 → 앱 재시작 시 자동 반영 (캐시 12시간)
+
+**현재 기본값 (Remote Config 미설정 시 사용):**
 ```
-
-**출시 후 교체:**
-```dart
-static final Uri defaultShareLink =
-    Uri.parse('https://play.google.com/store/apps/details?id=co.vinus.glmoi');
+https://glmoi-prod.web.app
 ```
 
 **이유:** 카카오 공유 카드의 `webUrl`은 실제 접근 가능한 URL이어야 링크가 활성화됩니다.
-앱 미출시 상태에서 Play Store URL을 쓰면 카드 클릭 시 아무 반응이 없어 임시로 관리자 웹 URL을 사용 중입니다.
-스토어 출시 후 반드시 Play Store URL로 교체하고 빌드/배포해야 합니다.
+앱 미출시 상태에서 Play Store URL을 쓰면 카드 클릭 시 아무 반응이 없어 임시로 관리자 웹 URL을 기본값으로 사용 중입니다.
 
 ---
 

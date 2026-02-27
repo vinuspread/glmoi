@@ -58,14 +58,14 @@ class AdsController {
         );
   }
 
-  Future<void> onAppExit() async {
+  Future<bool> onAppExit() async {
     final config = _ref.read(adConfigProvider).maybeWhen(
           data: (c) => c,
           orElse: () => null,
         );
-    if (config == null) return;
+    if (config == null) return false;
 
     // 앱 종료 시에는 overlay 없이 바로 표시
-    await _ref.read(adServiceProvider).maybeShowInterstitialForExit(config);
+    return _ref.read(adServiceProvider).maybeShowInterstitialForExit(config);
   }
 }

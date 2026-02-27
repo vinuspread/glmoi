@@ -12,6 +12,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
         children: const [
@@ -29,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.favorite_border), // Using standard icons for now
+            icon: Icon(Icons.favorite_border),
             activeIcon: Icon(Icons.favorite),
             label: '인기글',
           ),

@@ -6,8 +6,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/ads/ads_controller.dart';
 import '../../../../core/ads/banner_ad_widget.dart';
+import '../../../../core/ads/ads_providers.dart';
 import '../../../../core/auth/auth_service.dart';
-import '../../../../core/share/share_service.dart';
+import '../../../../core/share/share_sheet.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/interactions_repository.dart';
 import '../../data/quotes_repository.dart';
@@ -127,6 +128,8 @@ class _QuoteDetailPagerScreenState
   @override
   Widget build(BuildContext context) {
     final quote = _current;
+    final navPreAdRemainingListenable =
+        ref.read(adServiceProvider).navigationPreAdRemainingListenable;
     final isLoggedIn = ref.watch(authProvider);
     final isLiked = ref.watch(
       likedQuotesProvider.select((s) => s.contains(quote.id)),
@@ -440,6 +443,28 @@ class _QuoteDetailPagerScreenState
               ),
             ),
 
+            Positioned(
+              top: 0,
+              right: 12,
+              child: SafeArea(
+                bottom: false,
+                child: ValueListenableBuilder<int?>(
+                  valueListenable: navPreAdRemainingListenable,
+                  builder: (context, remainingSlides, _) {
+                    if (remainingSlides == null || remainingSlides <= 0) {
+                      return const SizedBox.shrink();
+                    }
+
+                    return IgnorePointer(
+                      child: _PreAdSlideNotice(
+                        remainingSlides: remainingSlides,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+
             // Fixed bottom action bar (pinned)
             Positioned(
               left: 0,
@@ -570,9 +595,12 @@ class _QuoteDetailPagerScreenState
                             final author =
                                 (quote.authorName ?? quote.author).trim();
 
-                            final shared = await ShareService.shareQuote(
+                            final shared = await showShareSheet(
+                              context: context,
                               content: quote.content,
                               author: author,
+                              likeCount: quote.likeCount,
+                              shareCount: quote.shareCount,
                             );
 
                             if (!shared) return;
@@ -654,6 +682,60 @@ class _TopPillButton extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PreAdSlideNotice extends StatelessWidget {
+  final int remainingSlides;
+
+  const _PreAdSlideNotice({required this.remainingSlides});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0x6B000000),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0x3DFFFFFF)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            '광고가 나옵니다.',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            width: 22,
+            height: 22,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0x33FFFFFF),
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0x8CFFFFFF)),
+            ),
+            child: Text(
+              '$remainingSlides',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                height: 1,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

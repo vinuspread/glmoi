@@ -92,12 +92,24 @@ class QuotesRepository {
       throw StateError('로그인이 필요합니다.');
     }
 
+    return watchMyMalmoiPostsByUid(uid: user.uid, limit: limit);
+  }
+
+  Stream<List<Quote>> watchMyMalmoiPostsByUid({
+    required String uid,
+    int limit = 50,
+  }) {
+    final normalizedUid = uid.trim();
+    if (normalizedUid.isEmpty) {
+      throw StateError('로그인이 필요합니다.');
+    }
+
     final query = _db
         .collection('quotes')
         .where('app_id', isEqualTo: appId)
         .where('type', isEqualTo: quoteTypeToFirestore(QuoteType.malmoi))
         .where('is_user_post', isEqualTo: true)
-        .where('user_uid', isEqualTo: user.uid)
+        .where('user_uid', isEqualTo: normalizedUid)
         .where('is_active', isEqualTo: true)
         .orderBy('createdAt', descending: true)
         .limit(limit);
@@ -105,6 +117,23 @@ class QuotesRepository {
     return query
         .snapshots()
         .map((s) => s.docs.map(Quote.fromFirestore).toList());
+  }
+
+  Stream<int> watchMyMalmoiPostCountByUid({required String uid}) {
+    final normalizedUid = uid.trim();
+    if (normalizedUid.isEmpty) {
+      throw StateError('로그인이 필요합니다.');
+    }
+
+    final query = _db
+        .collection('quotes')
+        .where('app_id', isEqualTo: appId)
+        .where('type', isEqualTo: quoteTypeToFirestore(QuoteType.malmoi))
+        .where('is_user_post', isEqualTo: true)
+        .where('user_uid', isEqualTo: normalizedUid)
+        .where('is_active', isEqualTo: true);
+
+    return query.snapshots().map((s) => s.size);
   }
 
   Future<void> updateMalmoiPost({

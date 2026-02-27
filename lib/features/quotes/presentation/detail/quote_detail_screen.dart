@@ -10,7 +10,7 @@ import '../../../../core/ads/ads_controller.dart';
 import '../../../../core/ads/banner_ad_widget.dart';
 import '../../../../core/auth/auth_service.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/share/share_service.dart';
+import '../../../../core/share/share_sheet.dart';
 import '../../../auth/domain/login_redirect.dart';
 import '../../data/interactions_repository.dart';
 import '../../data/quotes_repository.dart';
@@ -629,9 +629,12 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                             final author =
                                 (quote.authorName ?? quote.author).trim();
 
-                            final shared = await ShareService.shareQuote(
+                            final shared = await showShareSheet(
+                              context: context,
                               content: quote.content,
                               author: author,
+                              likeCount: quote.likeCount,
+                              shareCount: quote.shareCount,
                             );
 
                             if (!shared) return;

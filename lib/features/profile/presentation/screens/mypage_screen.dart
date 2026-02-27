@@ -42,10 +42,12 @@ class MyPageScreen extends ConsumerWidget {
                       onPressed: () => context.push('/login'),
                       style: FilledButton.styleFrom(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radius16),
+                          borderRadius:
+                              BorderRadius.circular(AppTheme.radius16),
                         ),
                       ),
-                      child: const Text('로그인하기', style: TextStyle(fontSize: 18)),
+                      child:
+                          const Text('로그인하기', style: TextStyle(fontSize: 18)),
                     ),
                   ),
                 ],
@@ -160,7 +162,8 @@ class MyPageScreen extends ConsumerWidget {
                         side: BorderSide(color: AppTheme.border),
                       ),
                       icon: const Icon(Icons.edit, size: 20),
-                      label: const Text('프로필 수정', style: TextStyle(fontSize: 16)),
+                      label:
+                          const Text('프로필 수정', style: TextStyle(fontSize: 16)),
                     ),
                   ),
                 ],
@@ -188,7 +191,11 @@ class MyPageScreen extends ConsumerWidget {
                         _StatRow(
                           icon: Icons.edit_note,
                           label: '내가 쓴 글',
-                          count: stats.myQuotesCount,
+                          count:
+                              ref.watch(myMalmoiPostsCountProvider).maybeWhen(
+                                    data: (count) => count,
+                                    orElse: () => stats.myQuotesCount,
+                                  ),
                           onTap: () => context.push('/malmoi/mine'),
                         ),
                         const SizedBox(height: 12),

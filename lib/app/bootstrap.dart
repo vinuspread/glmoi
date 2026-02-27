@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart' as kakao;
 
 import '../core/fcm/local_notification_service.dart';
+import '../core/remote_config/remote_config_service.dart';
 import 'app.dart';
 
 // Background message handler (must be top-level function)
@@ -15,10 +16,17 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('[FCM Background] Message ID: ${message.messageId}');
   debugPrint('[FCM Background] Full data: ${message.data}');
 
-  final imageUrl = message.data['image_url'] as String?;
   final content = message.data['content'] as String?;
   final quoteId = message.data['quote_id'] as String?;
   final quoteType = message.data['quote_type'] as String?;
+  final notification = message.notification;
+
+  if (notification != null) {
+    debugPrint(
+        '[FCM Background] Notification payload detected. Skip local notification to avoid duplicate.');
+    debugPrint('[FCM Background] ========== END ==========');
+    return;
+  }
 
   debugPrint(
       '[FCM Background] Parsed - quoteId: $quoteId, quoteType: $quoteType, content: ${content?.substring(0, content.length > 50 ? 50 : content.length)}...');
@@ -32,7 +40,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         '[FCM Background] Creating local notification with payload: $payload');
 
     await LocalNotificationService().showBigTextNotification(
-      title: '오늘의 글',
+      title: '오늘의 좋은글',
       body: content,
       payload: payload,
     );
@@ -55,6 +63,9 @@ Future<void> bootstrap() async {
   );
 
   await Firebase.initializeApp();
+
+  // Remote Config 초기화 (백그라운드 fetch, 앱 시작 지연 없음)
+  await RemoteConfigService.init();
 
   // FCM background message handler setup
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);

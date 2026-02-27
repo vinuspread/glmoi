@@ -130,10 +130,19 @@ class _ProfileEditDialogState extends ConsumerState<ProfileEditDialog> {
             SizedBox(
               width: double.infinity,
               height: 44,
-              child: OutlinedButton.icon(
+              child: OutlinedButton(
                 onPressed: _saving ? null : _pickFromGallery,
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('이미지 변경'),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.photo_library_outlined),
+                    SizedBox(width: 8),
+                    Padding(
+                      padding: EdgeInsets.only(left: 1),
+                      child: Text('이미지 변경'),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 20),

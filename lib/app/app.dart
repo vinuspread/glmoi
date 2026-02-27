@@ -36,9 +36,8 @@ class _GlmoiAppState extends ConsumerState<GlmoiApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.paused) {
-      // 앱 종료 시 광고 트리거
-      ref.read(adsControllerProvider).onAppExit();
+    if (state == AppLifecycleState.resumed) {
+      FCMService().refreshTopicSubscription();
     }
   }
 

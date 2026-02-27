@@ -61,7 +61,12 @@ End-user mobile app project (renamed from legacy "maumsori").
 - 광고 Unit ID는 Firestore `config/ad_config`에서 읽도록 구성(계정/Unit 교체를 앱 업데이트 없이 처리)
 - 앱 동작
   - 배너: 하단에 고정 노출(활성화 시 로딩/실패 중에도 배너 영역 높이 확보)
-  - 전면: 피드 카드 탭으로 상세 진입 시 N회마다 노출(설정/로드된 경우에만)
+- 전면: 피드 카드 탭으로 상세 진입 시 N회마다 노출(설정/로드된 경우에만)
+
+인트로 이미지(원격 랜덤):
+- 앱 시작 인트로 이미지를 Firebase 기반 매니페스트에서 랜덤 로드하도록 반영
+- 매니페스트 접근 실패 시 로컬 fallback(`assets/intro/intro_01~05.webp`)으로 안전하게 동작
+- Firestore Rules에 인트로 매니페스트 read 권한을 최소 범위로 허용해 permission-denied 이슈 해결
 
 운영 기능 배포/작업:
 - `glmoi-prod`에 Cloud Functions(callable) 배포: `kakaoCustomToken`, `likeQuoteOnce`, `incrementShareCount`, `reportMalmoiOnce`

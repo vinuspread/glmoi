@@ -21,14 +21,34 @@ class NotificationPrefsController {
 
   Future<void> setAutoContent(bool enabled) async {
     final repo = _ref.read(_notificationPrefsRepoProvider);
-    await repo.setAutoContent(enabled);
-
-    // FCM topic 구독/해지
     final messaging = FirebaseMessaging.instance;
+
     if (enabled) {
+      var settings = await messaging.getNotificationSettings();
+      if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
+        settings = await messaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+      }
+
+      final isAuthorized =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+              settings.authorizationStatus == AuthorizationStatus.provisional;
+
+      if (!isAuthorized) {
+        await repo.setAutoContent(false);
+        await messaging.unsubscribeFromTopic('all_users');
+        throw Exception('알림 권한이 꺼져 있어 자동수신을 켤 수 없습니다.');
+      }
+
+      await repo.setAutoContent(true);
       await messaging.subscribeToTopic('all_users');
-    } else {
-      await messaging.unsubscribeFromTopic('all_users');
+      return;
     }
+
+    await repo.setAutoContent(false);
+    await messaging.unsubscribeFromTopic('all_users');
   }
 }

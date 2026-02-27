@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:glmoi/core/theme/app_theme.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../quotes/presentation/feed/quotes_feed_screen.dart';
 import '../../quotes/domain/quote.dart';
@@ -26,19 +27,88 @@ class _HomeShellState extends State<HomeShell> {
 
     return Scaffold(
       body: IndexedStack(index: _index, children: screens),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _index,
-        onTap: (i) => setState(() => _index = i),
-        selectedItemColor: AppTheme.accent,
-        unselectedItemColor: AppTheme.textSecondary,
-        items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.format_quote), label: '한줄명언'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.lightbulb_outline), label: '좋은생각'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.forum_outlined), label: '글모이'),
-        ],
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Row(
+            children: [
+              _TextTabItem(
+                iconPath: 'assets/icons/nav_quote.svg',
+                label: '한줄명언',
+                selected: _index == 0,
+                onTap: () => setState(() => _index = 0),
+              ),
+              _TextTabItem(
+                iconPath: 'assets/icons/nav_thought.svg',
+                label: '좋은생각',
+                selected: _index == 1,
+                onTap: () => setState(() => _index = 1),
+              ),
+              _TextTabItem(
+                iconPath: 'assets/icons/nav_malmoi.svg',
+                label: '글모이',
+                selected: _index == 2,
+                onTap: () => setState(() => _index = 2),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TextTabItem extends StatelessWidget {
+  static const double _fontSize = 17;
+
+  final String iconPath;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _TextTabItem({
+    required this.iconPath,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? AppTheme.accent : AppTheme.textSecondary;
+    final weight = selected ? FontWeight.w700 : FontWeight.w500;
+
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: 56,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SvgPicture.asset(
+                iconPath,
+                width: 18,
+                height: 18,
+                colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                textScaler: TextScaler.noScaling,
+                style: TextStyle(
+                  color: color,
+                  fontSize: _fontSize,
+                  fontWeight: weight,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

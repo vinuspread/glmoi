@@ -14,7 +14,7 @@ class NotificationPrefsRepository {
   /// 자동수신 여부 스트림 (기본값 true)
   Stream<bool> watchAutoContent() {
     final uid = _auth.currentUser?.uid;
-    if (uid == null) return Stream.value(true);
+    if (uid == null) return Stream.value(false);
 
     return _db
         .collection('users')
@@ -25,15 +25,18 @@ class NotificationPrefsRepository {
 
   /// 자동수신 여부 저장
   Future<void> setAutoContent(bool enabled) async {
-    final doc = _userDoc();
-    if (doc == null) return;
-    await doc.set({'auto_content_enabled': enabled}, SetOptions(merge: true));
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    await _db.collection('users').doc(uid).set(
+      {'uid': uid, 'auto_content_enabled': enabled},
+      SetOptions(merge: true),
+    );
   }
 
   /// 현재 자동수신 여부 읽기 (1회)
   Future<bool> getAutoContent() async {
     final doc = _userDoc();
-    if (doc == null) return true;
+    if (doc == null) return false;
     final snap = await doc.get();
     return snap.data()?['auto_content_enabled'] as bool? ?? true;
   }

@@ -2,28 +2,42 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'kakao_talk_share_service.dart';
+import 'share_service.dart';
 
 /// 공유 수단 선택 바텀시트
 ///
+/// 카카오톡과 기타 공유 모두 동일한 합성 이미지(게시글 + 배너)를 사용한다.
+/// - 기타: 합성 이미지 파일을 시스템 공유 시트로 전달
+/// - 카카오톡: 합성 이미지를 Firebase Storage에 업로드 후 URL로 FeedTemplate 전달
+///
 /// 사용법:
 /// ```dart
-/// await ShareSheet.show(
+/// await showShareSheet(
 ///   context: context,
-///   content: KakaoTalkShareContent(text: '...'),
-///   plainText: '공유할 텍스트',
+///   content: '게시글 내용',
+///   author: '작성자',
+///   likeCount: 10,
+///   shareCount: 5,
 /// );
 /// ```
 ///
 /// 반환값: 실제로 공유가 실행됐으면 true, 취소면 false
 Future<bool> showShareSheet({
   required BuildContext context,
-  required KakaoTalkShareContent content,
-  required String plainText,
+  required String content,
+  required String author,
+  int? likeCount,
+  int? shareCount,
 }) async {
   final result = await showModalBottomSheet<_ShareResult>(
     context: context,
     backgroundColor: Colors.transparent,
-    builder: (_) => _ShareSheet(content: content, plainText: plainText),
+    builder: (_) => _ShareSheet(
+      content: content,
+      author: author,
+      likeCount: likeCount,
+      shareCount: shareCount,
+    ),
   );
 
   if (result == null) return false;
@@ -38,10 +52,17 @@ class _ShareResult {
 }
 
 class _ShareSheet extends StatefulWidget {
-  final KakaoTalkShareContent content;
-  final String plainText;
+  final String content;
+  final String author;
+  final int? likeCount;
+  final int? shareCount;
 
-  const _ShareSheet({required this.content, required this.plainText});
+  const _ShareSheet({
+    required this.content,
+    required this.author,
+    this.likeCount,
+    this.shareCount,
+  });
 
   @override
   State<_ShareSheet> createState() => _ShareSheetState();
@@ -57,18 +78,46 @@ class _ShareSheetState extends State<_ShareSheet> {
     try {
       switch (method) {
         case _ShareMethod.kakao:
-          await KakaoTalkShareService.share(widget.content);
+          // 카카오: 게시글 텍스트 그대로 전달 (TextTemplate)
+          final kakaoContent = KakaoTalkShareContent(
+            text: widget.content,
+            likeCount: widget.likeCount,
+            shareCount: widget.shareCount,
+          );
+          await KakaoTalkShareService.share(kakaoContent);
           if (context.mounted) Navigator.pop(context, const _ShareResult(true));
 
         case _ShareMethod.other:
-          final result = await SharePlus.instance.share(
-            ShareParams(
-              text: widget.plainText,
-              subject: widget.content.title,
-            ),
+          // 기타: 합성 이미지(게시글+배너) 1장 전송
+          final composedFile = await ShareService.composeShareImage(
+            content: widget.content,
+            author: widget.author,
           );
+
+          final ShareResult result;
+          final files = <XFile>[
+            if (composedFile != null)
+              XFile(composedFile.path, mimeType: 'image/png'),
+          ];
+
+          if (files.isNotEmpty) {
+            result = await SharePlus.instance.share(
+              ShareParams(
+                files: files,
+                text:
+                    'https://play.google.com/store/apps/details?id=co.vinus.glmoi',
+              ),
+            );
+          } else {
+            // 이미지 합성 실패 시 텍스트로 폴백
+            final authorLine = widget.author.trim().isEmpty
+                ? ''
+                : '\n\n- ${widget.author.trim()} -';
+            result = await SharePlus.instance.share(
+              ShareParams(text: '${widget.content}$authorLine'),
+            );
+          }
           if (!context.mounted) return;
-          // ShareResultStatus.dismissed = 사용자가 취소
           final shared = result.status != ShareResultStatus.dismissed;
           Navigator.pop(context, _ShareResult(shared));
       }

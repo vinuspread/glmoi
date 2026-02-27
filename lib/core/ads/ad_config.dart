@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 class AdConfig {
   final bool isBannerEnabled;
   final bool isInterstitialEnabled;
@@ -59,15 +61,41 @@ class AdConfig {
     );
   }
 
+  static const String _googleTestPublisherPrefix =
+      'ca-app-pub-3940256099942544/';
+
+  static bool _isGoogleTestAdUnit(String unitId) {
+    return unitId.trim().startsWith(_googleTestPublisherPrefix);
+  }
+
+  static String _sanitizeUnitIdForBuild(String unitId) {
+    final trimmed = unitId.trim();
+    if (trimmed.isEmpty) return '';
+
+    if (kReleaseMode && _isGoogleTestAdUnit(trimmed)) {
+      return '';
+    }
+
+    return trimmed;
+  }
+
   String bannerUnitIdForPlatform() {
-    if (Platform.isAndroid) return bannerAndroidUnitId.trim();
-    if (Platform.isIOS) return bannerIosUnitId.trim();
+    if (Platform.isAndroid) {
+      return _sanitizeUnitIdForBuild(bannerAndroidUnitId);
+    }
+    if (Platform.isIOS) {
+      return _sanitizeUnitIdForBuild(bannerIosUnitId);
+    }
     return '';
   }
 
   String interstitialUnitIdForPlatform() {
-    if (Platform.isAndroid) return interstitialAndroidUnitId.trim();
-    if (Platform.isIOS) return interstitialIosUnitId.trim();
+    if (Platform.isAndroid) {
+      return _sanitizeUnitIdForBuild(interstitialAndroidUnitId);
+    }
+    if (Platform.isIOS) {
+      return _sanitizeUnitIdForBuild(interstitialIosUnitId);
+    }
     return '';
   }
 }

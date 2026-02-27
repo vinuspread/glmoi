@@ -7,13 +7,19 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/feed_header_buttons.dart';
 import '../../auth/domain/login_redirect.dart';
 import '../../quotes/data/quotes_repository.dart';
+import '../../quotes/domain/quote.dart';
 import '../../quotes/presentation/feed/widgets/quote_feed_card.dart';
 import '../../quotes/presentation/detail/quote_detail_args.dart';
 
 final _quotesRepoProvider = Provider((ref) => QuotesRepository());
 
 final myMalmoiPostsProvider = StreamProvider((ref) {
-  return ref.watch(_quotesRepoProvider).watchMyMalmoiPosts();
+  final uid = ref.watch(authUidProvider).valueOrNull;
+  if (uid == null) {
+    return Stream.value(const <Quote>[]);
+  }
+
+  return ref.watch(_quotesRepoProvider).watchMyMalmoiPostsByUid(uid: uid);
 });
 
 class MalmoiMyPostsScreen extends ConsumerWidget {

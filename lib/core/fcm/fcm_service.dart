@@ -38,17 +38,7 @@ class FCMService {
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional) {
-        // 자동수신 설정 확인 후 topic 구독 결정 (기본값 true)
-        final autoEnabled =
-            await NotificationPrefsRepository().getAutoContent();
-        if (autoEnabled) {
-          await _messaging.subscribeToTopic('all_users');
-          debugPrint('[FCM] Subscribed to all_users topic');
-        } else {
-          await _messaging.unsubscribeFromTopic('all_users');
-          debugPrint(
-              '[FCM] Auto content disabled — unsubscribed from all_users topic');
-        }
+        await _syncTopicSubscription();
 
         // Get FCM token
         final token = await _messaging.getToken();
@@ -57,13 +47,19 @@ class FCMService {
           await _saveFcmToken(token);
         }
 
-        _messaging.onTokenRefresh.listen(_saveFcmToken);
+        _messaging.onTokenRefresh.listen((token) async {
+          await _saveFcmToken(token);
+          await _syncTopicSubscription();
+        });
 
-        FirebaseAuth.instance.authStateChanges().listen((user) {
+        FirebaseAuth.instance.authStateChanges().listen((user) async {
           if (user != null) {
             _messaging.getToken().then((t) {
               if (t != null) _saveFcmToken(t);
             });
+            await _syncTopicSubscription();
+          } else {
+            await _messaging.unsubscribeFromTopic('all_users');
           }
         });
 
@@ -86,6 +82,39 @@ class FCMService {
       }
     } catch (e) {
       debugPrint('[FCM] Initialization error: $e');
+    }
+  }
+
+  Future<void> _syncTopicSubscription() async {
+    final settings = await _messaging.getNotificationSettings();
+    final isAuthorized =
+        settings.authorizationStatus == AuthorizationStatus.authorized ||
+            settings.authorizationStatus == AuthorizationStatus.provisional;
+
+    if (!isAuthorized) {
+      await _messaging.unsubscribeFromTopic('all_users');
+      debugPrint(
+          '[FCM] Notification permission denied — unsubscribed from all_users topic');
+      return;
+    }
+
+    final autoEnabled = await NotificationPrefsRepository().getAutoContent();
+    if (autoEnabled) {
+      await _messaging.subscribeToTopic('all_users');
+      debugPrint('[FCM] Subscribed to all_users topic');
+      return;
+    }
+
+    await _messaging.unsubscribeFromTopic('all_users');
+    debugPrint(
+        '[FCM] Auto content disabled — unsubscribed from all_users topic');
+  }
+
+  Future<void> refreshTopicSubscription() async {
+    try {
+      await _syncTopicSubscription();
+    } catch (e) {
+      debugPrint('[FCM] Failed to refresh topic subscription: $e');
     }
   }
 
@@ -133,7 +162,7 @@ class FCMService {
     await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
-        .set({'fcm_token': token}, SetOptions(merge: true));
+        .set({'uid': uid, 'fcm_token': token}, SetOptions(merge: true));
   }
 
   /// Unsubscribe from FCM topic
@@ -147,40 +176,34 @@ class FCMService {
     }
   }
 
-  /// Handle foreground messages (show in-app notification or snackbar)
+  /// Handle foreground messages using system-style local notification
   void _handleForegroundMessage(RemoteMessage message) {
     debugPrint('[FCM Foreground] Message received: ${message.messageId}');
     debugPrint('[FCM Foreground] Data: ${message.data}');
 
     final notification = message.notification;
-    if (notification != null) {
-      debugPrint('[FCM Foreground] Title: ${notification.title}');
-      debugPrint('[FCM Foreground] Body: ${notification.body}');
+    if (notification != null || message.data.isNotEmpty) {
+      final title = notification?.title ?? '오늘의 좋은글';
+      final body = notification?.body ??
+          (message.data['content'] as String?) ??
+          '새로운 알림이 도착했습니다';
+
+      final dataImageUrl = message.data['image_url'] as String?;
+      debugPrint('[FCM Foreground] Title: ${notification?.title}');
+      debugPrint('[FCM Foreground] Body: ${notification?.body}');
       debugPrint(
-        '[FCM Foreground] Image: ${notification.android?.imageUrl ?? notification.apple?.imageUrl ?? 'none'}',
+        '[FCM Foreground] Image: ${notification?.android?.imageUrl ?? notification?.apple?.imageUrl ?? dataImageUrl ?? 'none'}',
       );
 
-      if (_navigatorKey == null) {
-        debugPrint('[FCM Foreground] Navigator key is null');
-        return;
-      }
+      final quoteId = message.data['quote_id'] as String?;
+      final quoteType = message.data['quote_type'] as String? ?? 'quote';
+      final payload = quoteId != null ? '$quoteId|$quoteType' : null;
 
-      final context = _navigatorKey!.currentContext;
-      if (context != null && context.mounted) {
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.clearSnackBars();
-        final controller = messenger.showSnackBar(
-          SnackBar(
-            content: GestureDetector(
-              onTap: () => _navigateToQuote(message.data),
-              behavior: HitTestBehavior.opaque,
-              child: Text(notification.body ?? '새로운 알림이 도착했습니다'),
-            ),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-        Future.delayed(const Duration(seconds: 3), controller.close);
-      }
+      LocalNotificationService().showBigTextNotification(
+        title: title,
+        body: body,
+        payload: payload,
+      );
     }
   }
 
