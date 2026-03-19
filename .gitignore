@@ -52,3 +52,17 @@ data_backup/
 /android/key.properties
 /android/*.keystore
 /android/*.jks
+
+# Release artifacts (NEVER commit)
+*.aab
+*.apk
+/release/**/*.aab
+/release/**/*.apk
+
+# Secrets / credentials (NEVER commit)
+.env
+.env.*
+*.p12
+*.pem
+*.key
+*.mobileprovision
