@@ -17,7 +17,9 @@ import '../../data/quotes_repository.dart';
 import '../liked_quotes_provider.dart';
 import '../saved_quotes_provider.dart';
 import '../../domain/quote.dart';
+import '../../../reactions/domain/reaction_catalog.dart';
 import '../../../reactions/domain/reaction_type.dart';
+import '../../../reactions/presentation/widgets/reaction_bottom_sheet.dart';
 import '../../../reactions/presentation/providers/my_reaction_provider.dart';
 import '../widgets/content_text.dart';
 
@@ -946,75 +948,29 @@ class _TopReactionButton extends StatefulWidget {
 }
 
 class _TopReactionButtonState extends State<_TopReactionButton> {
-  static const _items = <(ReactionType type, String label, String asset)>[
-    (ReactionType.comfort, '위로받았어요', 'assets/icons/reactions/comfort.png'),
-    (ReactionType.empathize, '공감해요', 'assets/icons/reactions/empathize.png'),
-    (ReactionType.good, '멋진글이예요', 'assets/icons/reactions/good.png'),
-    (ReactionType.touched, '감동했어요', 'assets/icons/reactions/touched.png'),
-    (ReactionType.fan, '팬이예요', 'assets/icons/reactions/fan.png'),
-  ];
-
   void _showReactionSheet() {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF1A1F2E),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 8),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0x33FFFFFF),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: Text(
-                  '공감 남기기',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const Divider(height: 1, thickness: 1, color: Color(0x1AFFFFFF)),
-              for (int i = 0; i < _items.length; i++) ...[
-                _ReactionBubbleItem(
-                  label: _items[i].$2,
-                  asset: _items[i].$3,
-                  count: widget.quote.reactionCounts[
-                          reactionTypeToFirestore(_items[i].$1)] ??
-                      0,
-                  selected: widget.myReaction == _items[i].$1,
-                  disabled: widget.myReaction != null &&
-                      widget.myReaction != _items[i].$1,
-                  onTap: () async {
-                    Navigator.pop(context);
-                    await widget.onReact(_items[i].$1);
-                  },
-                ),
-                if (i < _items.length - 1)
-                  const Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: Color(0x1AFFFFFF),
-                  ),
-              ],
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
+      builder: (context) => ReactionBottomSheet(
+        items: [
+          for (final item in kReactionMenuItems)
+            ReactionBottomSheetItem(
+              type: item.type,
+              label: item.label,
+              assetPath: reactionAssetPath(item.type),
+              count: widget.quote
+                      .reactionCounts[reactionTypeToFirestore(item.type)] ??
+                  0,
+              selected: widget.myReaction == item.type,
+              disabled:
+                  widget.myReaction != null && widget.myReaction != item.type,
+              onTap: () async {
+                Navigator.pop(context);
+                await widget.onReact(item.type);
+              },
+            ),
+        ],
       ),
     );
   }
@@ -1030,73 +986,6 @@ class _TopReactionButtonState extends State<_TopReactionButton> {
           (widget.myReaction != null ? const Color(0xFFFD2F79) : Colors.white),
       backgroundColor: widget.backgroundColor,
       onPressed: _showReactionSheet,
-    );
-  }
-}
-
-class _ReactionBubbleItem extends StatelessWidget {
-  final String label;
-  final String asset;
-  final int count;
-  final bool selected;
-  final bool disabled;
-  final Future<void> Function() onTap;
-
-  const _ReactionBubbleItem({
-    required this.label,
-    required this.asset,
-    required this.count,
-    required this.selected,
-    required this.disabled,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: disabled ? null : () => onTap(),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Image.asset(
-                asset,
-                width: 24,
-                height: 24,
-                errorBuilder: (_, __, ___) => Icon(
-                  Icons.emoji_emotions_outlined,
-                  size: 24,
-                  color: selected ? const Color(0xFFFD2F79) : Colors.white,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                    color: selected ? const Color(0xFFFD2F79) : Colors.white,
-                  ),
-                ),
-              ),
-              Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: selected
-                      ? const Color(0xFFFD2F79)
-                      : const Color(0xFF9CA3AF),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

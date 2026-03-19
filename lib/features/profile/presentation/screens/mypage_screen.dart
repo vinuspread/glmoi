@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/auth/auth_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../reactions/domain/reaction_catalog.dart';
+import '../../../reactions/domain/reaction_type.dart';
 import '../widgets/profile_edit_dialog.dart';
 import '../providers/user_stats_provider.dart';
 
@@ -229,34 +231,14 @@ class MyPageScreen extends ConsumerWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _ReactionStat(
-                              iconPath: 'assets/icons/reactions/comfort.png',
-                              label: '위로',
-                              count:
-                                  stats.receivedReactionStats['comfort'] ?? 0,
-                            ),
-                            _ReactionStat(
-                              iconPath: 'assets/icons/reactions/empathize.png',
-                              label: '공감',
-                              count:
-                                  stats.receivedReactionStats['empathize'] ?? 0,
-                            ),
-                            _ReactionStat(
-                              iconPath: 'assets/icons/reactions/good.png',
-                              label: '멋진글',
-                              count: stats.receivedReactionStats['good'] ?? 0,
-                            ),
-                            _ReactionStat(
-                              iconPath: 'assets/icons/reactions/touched.png',
-                              label: '감동',
-                              count:
-                                  stats.receivedReactionStats['touched'] ?? 0,
-                            ),
-                            _ReactionStat(
-                              iconPath: 'assets/icons/reactions/fan.png',
-                              label: '팬',
-                              count: stats.receivedReactionStats['fan'] ?? 0,
-                            ),
+                            for (final type in ReactionType.values)
+                              _ReactionStat(
+                                iconPath: reactionAssetPath(type),
+                                label: reactionShortLabel(type),
+                                count: stats.receivedReactionStats[
+                                        reactionTypeToFirestore(type)] ??
+                                    0,
+                              ),
                           ],
                         ),
                       ],
