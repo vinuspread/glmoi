@@ -1,8 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/quote.dart';
 import '../../../core/backend/functions_client.dart';
+import '../../../core/utils/session_shuffle.dart';
+
+final quotesRepositoryProvider =
+    Provider<QuotesRepository>((ref) => QuotesRepository());
 
 class QuotesRepository {
   final FirebaseFirestore _db;
@@ -27,9 +32,14 @@ class QuotesRepository {
         .orderBy('createdAt', descending: true)
         .limit(limit);
 
-    return query
-        .snapshots()
-        .map((s) => s.docs.map(Quote.fromFirestore).toList());
+    return query.snapshots().map((s) {
+      final items = s.docs.map(Quote.fromFirestore).toList();
+      return SessionShuffle.reorder(
+        items: items,
+        key: 'feed:${type.name}',
+        idOf: (q) => q.id,
+      );
+    });
   }
 
   Stream<List<Quote>> _watchMalmoi({required int limit}) {
@@ -42,9 +52,14 @@ class QuotesRepository {
         .orderBy('createdAt', descending: true)
         .limit(limit);
 
-    return query
-        .snapshots()
-        .map((s) => s.docs.map(Quote.fromFirestore).toList());
+    return query.snapshots().map((s) {
+      final items = s.docs.map(Quote.fromFirestore).toList();
+      return SessionShuffle.reorder(
+        items: items,
+        key: 'feed:malmoi',
+        idOf: (q) => q.id,
+      );
+    });
   }
 
   Future<void> createMalmoiPost({
@@ -114,9 +129,14 @@ class QuotesRepository {
         .orderBy('createdAt', descending: true)
         .limit(limit);
 
-    return query
-        .snapshots()
-        .map((s) => s.docs.map(Quote.fromFirestore).toList());
+    return query.snapshots().map((s) {
+      final items = s.docs.map(Quote.fromFirestore).toList();
+      return SessionShuffle.reorder(
+        items: items,
+        key: 'mine:malmoi:$normalizedUid',
+        idOf: (q) => q.id,
+      );
+    });
   }
 
   Stream<int> watchMyMalmoiPostCountByUid({required String uid}) {
@@ -134,6 +154,37 @@ class QuotesRepository {
         .where('is_active', isEqualTo: true);
 
     return query.snapshots().map((s) => s.size);
+  }
+
+  Future<void> createThoughtPost({
+    required String content,
+    required String category,
+    required MalmoiLength malmoiLength,
+    String? imageUrl,
+  }) async {
+    final trimmed = content.trim();
+    if (trimmed.isEmpty) return;
+
+    final cat = category.trim();
+    if (cat.isEmpty) throw StateError('카테고리를 선택하세요.');
+
+    final img = (imageUrl ?? '').trim();
+
+    String malmoiLengthToFirestore(MalmoiLength v) =>
+        v == MalmoiLength.long ? 'long' : 'short';
+
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName = (user?.displayName ?? user?.email ?? '').trim();
+
+    final callable =
+        FunctionsClient.instance.httpsCallable('createThoughtPost');
+    await callable.call({
+      'content': trimmed,
+      'category': cat,
+      'malmoi_length': malmoiLengthToFirestore(malmoiLength),
+      'image_url': img,
+      'author': displayName,
+    });
   }
 
   Future<void> updateMalmoiPost({

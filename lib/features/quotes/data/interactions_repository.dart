@@ -1,4 +1,9 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/backend/functions_client.dart';
+
+final interactionsRepositoryProvider =
+    Provider<InteractionsRepository>((ref) => InteractionsRepository());
 
 class InteractionsRepository {
   Future<bool> likeQuoteOnce({required String quoteId}) async {

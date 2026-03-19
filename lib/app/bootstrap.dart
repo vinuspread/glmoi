@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart' as kakao;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/fcm/local_notification_service.dart';
 import '../core/remote_config/remote_config_service.dart';
@@ -63,6 +67,14 @@ Future<void> bootstrap() async {
   );
 
   await Firebase.initializeApp();
+
+  // SharedPreferences 캐시 워밍업 — IntroGate loading 상태(흰 화면) 제거
+  // introSeenProvider가 getInstance()를 호출할 때 이미 캐시에 있어 즉시 반환됨
+  unawaited(SharedPreferences.getInstance());
+
+  // AdMob SDK 조기 초기화 — 버튼 첫 클릭 시 블로킹 방지
+  // 이후 AdService.ensureInitialized()가 호출되더라도 SDK가 idempotent하게 처리
+  unawaited(MobileAds.instance.initialize());
 
   // Remote Config 초기화 (백그라운드 fetch, 앱 시작 지연 없음)
   await RemoteConfigService.init();

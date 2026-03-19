@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/ads/ads_controller.dart';
 import '../../../../core/ads/banner_ad_widget.dart';
 import '../../../../core/auth/auth_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/share/share_service.dart';
 import '../../../../core/share/share_sheet.dart';
 import '../../../auth/domain/login_redirect.dart';
 import '../../data/interactions_repository.dart';
@@ -20,9 +20,6 @@ import '../../domain/quote.dart';
 import '../../../reactions/domain/reaction_type.dart';
 import '../../../reactions/presentation/providers/my_reaction_provider.dart';
 import '../widgets/content_text.dart';
-
-final _interactionsRepoProvider = Provider((ref) => InteractionsRepository());
-final _quotesRepoProvider = Provider((ref) => QuotesRepository());
 
 class QuoteDetailScreen extends ConsumerStatefulWidget {
   final Quote quote;
@@ -59,13 +56,15 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
     _quote = widget.quote;
     _scheduleAutoHideActions();
     _recordView();
+    // 공유 버튼 즉시 반응을 위해 배너 이미지 미리 캐시
+    ShareService.prefetchBanner();
   }
 
   void _recordView() {
     final uid = ref.read(authUidProvider).valueOrNull;
     if (uid == null) return;
     ref
-        .read(_interactionsRepoProvider)
+        .read(interactionsRepositoryProvider)
         .incrementViewCount(quoteId: widget.quote.id)
         .ignore();
   }
@@ -146,9 +145,6 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
     final quote = _quote;
     final showReactions = quote.type == QuoteType.malmoi;
 
-    // Debug log
-    debugPrint(
-        '[QuoteDetail] quote.id=${quote.id}, type=${quote.type}, showReactions=$showReactions');
     final isLiked = ref.watch(
       likedQuotesProvider.select((s) => s.contains(quote.id)),
     );
@@ -164,7 +160,8 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
         quote.isUserPost &&
         ((quote.userUid != null && quote.userUid == currentUid) ||
             (quote.userProvider == 'firebase' && quote.userId == currentUid));
-    final isLong = quote.type == QuoteType.thought ||
+    final isLong = (quote.type == QuoteType.thought &&
+            quote.malmoiLength == MalmoiLength.long) ||
         (quote.type == QuoteType.malmoi &&
             quote.malmoiLength == MalmoiLength.long);
 
@@ -198,6 +195,9 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                 fit: BoxFit.cover,
                 memCacheWidth: bgCacheW,
                 memCacheHeight: bgCacheH,
+                fadeInDuration: const Duration(milliseconds: 150),
+                placeholder: (_, __) =>
+                    const ColoredBox(color: Color(0xFF0B1220)),
                 errorWidget: (_, __, ___) =>
                     const ColoredBox(color: Color(0xFF0B1220)),
               ),
@@ -250,6 +250,9 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                 fit: BoxFit.cover,
                 memCacheWidth: bgCacheW,
                 memCacheHeight: bgCacheH,
+                fadeInDuration: const Duration(milliseconds: 150),
+                placeholder: (_, __) =>
+                    const ColoredBox(color: Color(0xFF0B1220)),
                 errorWidget: (_, __, ___) =>
                     const ColoredBox(color: Color(0xFF0B1220)),
               ),
@@ -301,7 +304,7 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
 
                             try {
                               final alreadyReported = await ref
-                                  .read(_interactionsRepoProvider)
+                                  .read(interactionsRepositoryProvider)
                                   .reportMalmoiOnce(
                                     quoteId: quote.id,
                                     reasonCode: reasonCode,
@@ -459,7 +462,7 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                               if (ok != true) return;
                               try {
                                 await ref
-                                    .read(_quotesRepoProvider)
+                                    .read(quotesRepositoryProvider)
                                     .deleteMalmoiPost(quoteId: quote.id);
                                 if (!context.mounted) return;
                                 messenger.showSnackBar(
@@ -544,7 +547,7 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                             final messenger = ScaffoldMessenger.of(context);
                             try {
                               final alreadyLiked = await ref
-                                  .read(_interactionsRepoProvider)
+                                  .read(interactionsRepositoryProvider)
                                   .likeQuoteOnce(quoteId: quote.id);
                               if (!mounted) return;
                               if (alreadyLiked) {
@@ -641,7 +644,7 @@ class _QuoteDetailScreenState extends ConsumerState<QuoteDetailScreen> {
                             if (!mounted) return;
 
                             await ref
-                                .read(_interactionsRepoProvider)
+                                .read(interactionsRepositoryProvider)
                                 .incrementShareCount(quoteId: quote.id);
 
                             // 공유 후 광고 트리거
@@ -944,11 +947,11 @@ class _TopReactionButton extends StatefulWidget {
 
 class _TopReactionButtonState extends State<_TopReactionButton> {
   static const _items = <(ReactionType type, String label, String asset)>[
-    (ReactionType.comfort, '위로받았어요', 'assets/icons/reactions/comfort.svg'),
-    (ReactionType.empathize, '공감해요', 'assets/icons/reactions/empathize.svg'),
-    (ReactionType.good, '멋진글이예요', 'assets/icons/reactions/good.svg'),
-    (ReactionType.touched, '감동했어요', 'assets/icons/reactions/touched.svg'),
-    (ReactionType.fan, '팬이예요', 'assets/icons/reactions/fan.svg'),
+    (ReactionType.comfort, '위로받았어요', 'assets/icons/reactions/comfort.png'),
+    (ReactionType.empathize, '공감해요', 'assets/icons/reactions/empathize.png'),
+    (ReactionType.good, '멋진글이예요', 'assets/icons/reactions/good.png'),
+    (ReactionType.touched, '감동했어요', 'assets/icons/reactions/touched.png'),
+    (ReactionType.fan, '팬이예요', 'assets/icons/reactions/fan.png'),
   ];
 
   void _showReactionSheet() {
@@ -1059,13 +1062,14 @@ class _ReactionBubbleItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              SvgPicture.asset(
+              Image.asset(
                 asset,
                 width: 24,
                 height: 24,
-                colorFilter: ColorFilter.mode(
-                  selected ? const Color(0xFFFD2F79) : Colors.white,
-                  BlendMode.srcIn,
+                errorBuilder: (_, __, ___) => Icon(
+                  Icons.emoji_emotions_outlined,
+                  size: 24,
+                  color: selected ? const Color(0xFFFD2F79) : Colors.white,
                 ),
               ),
               const SizedBox(width: 12),

@@ -6,7 +6,7 @@ import '../../../../core/ads/ads_controller.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../quotes/domain/quote.dart';
 import '../../../quotes/presentation/saved_quotes_provider.dart';
-import '../../../quotes/presentation/feed/widgets/quote_feed_card.dart';
+import '../../../quotes/presentation/feed/widgets/quote_list_tile.dart';
 
 class SavedQuotesScreen extends ConsumerWidget {
   const SavedQuotesScreen({super.key});
@@ -31,7 +31,7 @@ class SavedQuotesScreen extends ConsumerWidget {
                   Icon(
                     Icons.bookmark_border,
                     size: 64,
-                    color: AppTheme.textSecondary.withOpacity(0.5),
+                    color: AppTheme.textSecondary.withValues(alpha: 0.5),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -47,16 +47,17 @@ class SavedQuotesScreen extends ConsumerWidget {
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.zero,
             itemCount: snapshots.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            separatorBuilder: (_, __) => const Divider(
+                height: 1, thickness: 1, color: Color(0xFFF5F5F5)),
             itemBuilder: (context, index) {
               final snapshot = snapshots[index];
-              // Convert SavedQuoteSnapshot to Quote for QuoteFeedCard
+              final quoteType = _parseQuoteType(snapshot.type);
               final quote = Quote(
                 id: snapshot.quoteId,
                 appId: snapshot.appId,
-                type: _parseQuoteType(snapshot.type),
+                type: quoteType,
                 malmoiLength: MalmoiLength.short,
                 content: snapshot.content,
                 author: snapshot.author,
@@ -72,9 +73,9 @@ class SavedQuotesScreen extends ConsumerWidget {
                 userId: null,
               );
 
-              return QuoteFeedCard(
+              return QuoteListTile(
                 quote: quote,
-                onOpenDetail: () async {
+                onTap: () async {
                   await ref.read(adsControllerProvider).onOpenDetail(context);
                   if (!context.mounted) return;
                   context.push('/detail', extra: quote);

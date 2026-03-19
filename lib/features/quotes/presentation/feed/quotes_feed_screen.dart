@@ -13,13 +13,11 @@ import '../detail/quote_detail_args.dart';
 import 'widgets/quote_feed_card.dart';
 import 'widgets/quote_list_tile.dart';
 
-final _quotesRepoProvider = Provider((ref) => QuotesRepository());
-
 final quotesFeedProvider = StreamProvider.family<List<Quote>, QuoteType>((
   ref,
   type,
 ) {
-  return ref.watch(_quotesRepoProvider).watchQuotes(type: type);
+  return ref.watch(quotesRepositoryProvider).watchQuotes(type: type);
 });
 
 class QuotesFeedScreen extends ConsumerWidget {
@@ -54,8 +52,8 @@ class QuotesFeedScreen extends ConsumerWidget {
                 }
                 context.push('/malmoi/write');
               },
-              child: const Icon(Icons.edit),
               shape: const CircleBorder(),
+              child: const Icon(Icons.edit),
             )
           : null,
       body: quotesAsync.when(

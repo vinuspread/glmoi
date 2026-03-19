@@ -148,7 +148,7 @@ class Quote {
       id: doc.id,
       appId: (data['app_id'] as String?) ?? 'maumsori',
       type: type,
-      malmoiLength: type == QuoteType.malmoi
+      malmoiLength: (type == QuoteType.malmoi || type == QuoteType.thought)
           ? malmoiLengthFromFirestore(data['malmoi_length'] as String?)
           : MalmoiLength.short,
       content: (data['content'] as String?) ?? '',

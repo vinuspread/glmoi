@@ -1,7 +1,7 @@
 name: glmoi
 description: "A comfort-first content curation app for seniors."
 publish_to: 'none'
-version: 1.0.0+3
+version: 1.0.0+6
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -45,6 +45,7 @@ dependencies:
   firebase_storage: ^13.0.6
   image_picker: ^1.2.1
   http: ^1.1.0
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

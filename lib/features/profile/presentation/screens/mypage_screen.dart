@@ -14,7 +14,8 @@ class MyPageScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context);
     final isLoggedIn = ref.watch(authProvider);
-    final currentUser = FirebaseAuth.instance.currentUser;
+    final currentUser = ref.watch(currentFirebaseUserProvider).valueOrNull ??
+        FirebaseAuth.instance.currentUser;
 
     if (!isLoggedIn || currentUser == null) {
       return Scaffold(

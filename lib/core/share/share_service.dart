@@ -17,9 +17,10 @@ class ShareService {
     'banner/banner_02.png',
     'banner/banner_03.png',
     'banner/banner_04.png',
+    'banner/banner_05.png',
   ];
 
-  static Uint8List? _cachedBannerBytes;
+  static final Map<String, Uint8List> _cachedBannerBytesByPath = {};
 
   /// 배너 이미지 단독 파일을 반환한다.
   /// 기타 공유 시 합성 이미지와 함께 2번째 파일로 첨부하는 용도.
@@ -67,17 +68,21 @@ class ShareService {
     try {
       final composed =
           await composeShareImage(content: content, author: author);
+      final authorLine =
+          author.trim().isEmpty ? '' : '\n\n- ${author.trim()} -';
+      final shareText = '$content$authorLine\n\n글모이 $_appUrl';
 
       final ShareResult result;
       if (composed != null) {
         result = await SharePlus.instance.share(
-          ShareParams(files: [XFile(composed.path, mimeType: 'image/png')]),
+          ShareParams(
+            files: [XFile(composed.path, mimeType: 'image/png')],
+            text: shareText,
+          ),
         );
       } else {
-        final authorLine =
-            author.trim().isEmpty ? '' : '\n\n- ${author.trim()} -';
         result = await SharePlus.instance.share(
-          ShareParams(text: '$content$authorLine\n\n글모이 $_appUrl'),
+          ShareParams(text: shareText),
         );
       }
       return result.status != ShareResultStatus.dismissed;
@@ -86,15 +91,24 @@ class ShareService {
     }
   }
 
+  /// 배너 이미지를 미리 캐시에 올려둔다.
+  /// 상세 화면 진입 시 fire-and-forget으로 호출하면,
+  /// 이후 공유 버튼 탭 시 네트워크 대기 없이 즉시 시트가 열린다.
+  static void prefetchBanner() {
+    _bannerBytes().ignore();
+  }
+
   static Future<Uint8List?> _bannerBytes() async {
-    if (_cachedBannerBytes != null) return _cachedBannerBytes;
     try {
       final path = _bannerPaths[Random().nextInt(_bannerPaths.length)];
+      final cached = _cachedBannerBytesByPath[path];
+      if (cached != null) return cached;
+
       final ref = FirebaseStorage.instance.ref().child(path);
       final bytes = await ref.getData();
       if (bytes == null) return null;
-      _cachedBannerBytes = bytes;
-      return _cachedBannerBytes;
+      _cachedBannerBytesByPath[path] = bytes;
+      return bytes;
     } catch (_) {
       return null;
     }

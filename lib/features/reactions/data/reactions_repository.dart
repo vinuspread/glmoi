@@ -43,13 +43,6 @@ class ReactionsRepository {
       throw StateError('로그인이 필요합니다.');
     }
 
-    // Force token refresh and wait for auth state to stabilize
-    await user.reload();
-    final token = await user.getIdToken(true);
-    if (token == null || token.isEmpty) {
-      throw StateError('로그인 인증 정보를 가져올 수 없습니다.');
-    }
-
     final callable = FunctionsClient.instance.httpsCallable('reactToQuoteOnce');
     final res = await callable.call({
       'quoteId': quoteId,

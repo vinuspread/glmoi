@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -17,11 +18,20 @@ final authUidProvider = StreamProvider<String?>((ref) {
   return FirebaseAuth.instance.authStateChanges().map((u) => u?.uid);
 });
 
+/// 프로필 이미지·닉네임 변경을 포함한 모든 유저 상태 변화를 스트리밍
+final currentFirebaseUserProvider = StreamProvider<User?>((ref) {
+  return FirebaseAuth.instance.userChanges();
+});
+
 class AuthService extends StateNotifier<bool> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    // Web Client ID from google-services.json (required for Android DEVELOPER_ERROR fix)
+    serverClientId:
+        '352429434218-ti88fbhbhesq4flmtnvk2g1gak9g71hh.apps.googleusercontent.com',
+  );
 
   AuthService() : super(false) {
     _bindAuthState();
@@ -182,8 +192,6 @@ class AuthService extends StateNotifier<bool> {
         );
       }
 
-      // CRITICAL: Reset Functions instance after login
-
       state = true;
       if (kDebugMode) {
         debugPrint('Kakao login success');
@@ -221,8 +229,6 @@ class AuthService extends StateNotifier<bool> {
           photoUrl: user.photoURL,
         );
       }
-
-      // CRITICAL: Reset Functions instance after login
 
       state = true;
       if (kDebugMode) {
@@ -377,9 +383,13 @@ class AuthService extends StateNotifier<bool> {
     final url = (await ref.getDownloadURL()).trim();
     if (url.isEmpty) throw StateError('프로필 이미지 업로드에 실패했습니다.');
 
-    if ((user.photoURL ?? '').trim() != url) {
-      await user.updatePhotoURL(url);
-    }
+    // URL이 동일해도 항상 업데이트 → userChanges() 이벤트 강제 발생
+    await user.updatePhotoURL(url);
+    await user.reload(); // currentUser 캐시 갱신
+
+    // Flutter 이미지 캐시 삭제 → 같은 URL이라도 새 이미지 표시
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
 
     await _upsertUserProfile(
       uid: user.uid,

@@ -12,6 +12,7 @@ import 'router_helpers.dart';
 import '../features/malmoi/presentation/malmoi_edit_screen.dart';
 import '../features/malmoi/presentation/malmoi_my_posts_screen.dart';
 import '../features/malmoi/presentation/malmoi_write_screen.dart';
+
 import '../features/quotes/presentation/detail/quote_detail_args.dart';
 import '../features/quotes/presentation/detail/quote_detail_pager_screen.dart';
 import '../features/quotes/presentation/detail/quote_detail_screen.dart';
@@ -65,6 +66,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/malmoi/write',
         builder: (context, state) => const MalmoiWriteScreen(),
       ),
+
       GoRoute(
         path: '/malmoi/mine',
         builder: (context, state) => const MalmoiMyPostsScreen(),

@@ -50,9 +50,7 @@ class QuoteFeedCard extends ConsumerWidget {
                 ),
               ),
 
-            // Stronger gradient for better text readability
-
-            // Semi-transparent black overlay for readability
+            // Semi-transparent overlay for text readability
             Positioned.fill(
               child: ColoredBox(
                 color: Colors.black.withOpacity(0.4),

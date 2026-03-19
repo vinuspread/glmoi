@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +9,7 @@ import '../../../../core/ads/ads_controller.dart';
 import '../../../../core/ads/banner_ad_widget.dart';
 import '../../../../core/ads/ads_providers.dart';
 import '../../../../core/auth/auth_service.dart';
+import '../../../../core/share/share_service.dart';
 import '../../../../core/share/share_sheet.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/interactions_repository.dart';
@@ -19,9 +21,6 @@ import '../../../reactions/domain/reaction_type.dart';
 import '../../../reactions/presentation/providers/my_reaction_provider.dart';
 import 'quote_detail_args.dart';
 import 'quote_detail_screen.dart';
-
-final _interactionsRepoProvider = Provider((ref) => InteractionsRepository());
-final _quotesRepoProvider = Provider((ref) => QuotesRepository());
 
 class QuoteDetailPagerScreen extends ConsumerStatefulWidget {
   final QuoteDetailArgs args;
@@ -58,6 +57,12 @@ class _QuoteDetailPagerScreenState
     _index = widget.args.initialIndex.clamp(0, _quotes.length - 1);
     _controller = PageController(initialPage: _index);
     _scheduleAutoHideActions();
+    // 공유 버튼 즉시 반응을 위해 배너 이미지 미리 캐시
+    ShareService.prefetchBanner();
+    // 첫 페이지 진입 시 앞뒤 이미지 사전 로딩
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _precacheAdjacentImages(_index);
+    });
   }
 
   @override
@@ -65,6 +70,20 @@ class _QuoteDetailPagerScreenState
     _hideActionsTimer?.cancel();
     _controller.dispose();
     super.dispose();
+  }
+
+  /// 현재 인덱스 기준 앞뒤 [range]장 이미지를 백그라운드로 미리 캐시.
+  /// 스와이프 시 이미지가 이미 메모리/디스크에 있어 텍스트·이미지 동시 표시됨.
+  void _precacheAdjacentImages(int currentIndex, {int range = 3}) {
+    if (!mounted) return;
+    final start = (currentIndex - 1).clamp(0, _quotes.length - 1);
+    final end = (currentIndex + range).clamp(0, _quotes.length - 1);
+    for (int i = start; i <= end; i++) {
+      if (i == currentIndex) continue;
+      final url = _quotes[i].imageUrl;
+      if (url == null || url.isEmpty) continue;
+      precacheImage(CachedNetworkImageProvider(url), context);
+    }
   }
 
   void _scheduleAutoHideActions() {
@@ -157,9 +176,6 @@ class _QuoteDetailPagerScreenState
         hasImage ? const Color(0x4DFFFFFF) : const Color(0x14000000);
     final pillIconColor = hasImage ? Colors.white : AppTheme.textPrimary;
 
-    debugPrint(
-        '[QuoteDetailPager] quote.id=${quote.id}, type=${quote.type}, showReactions=$showReactions, myReaction=$myReaction');
-
     return Scaffold(
       backgroundColor: const Color(0xFF0B1220),
       body: GestureDetector(
@@ -179,6 +195,10 @@ class _QuoteDetailPagerScreenState
                 // 슬라이드로 다음/이전 글 이동 시도 화면이동 횟수 광고 트리거
                 // 슬라이드 중에는 context 사용 불가 → overlay 없이 표시
                 ref.read(adsControllerProvider).onOpenDetail(null);
+                // 페이지 settle 후 300ms 딜레이 → 이미지 디코딩이 다음 스와이프와 CPU 경합 방지
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  _precacheAdjacentImages(i);
+                });
               },
               itemBuilder: (context, index) {
                 final q = _quotes[index];
@@ -193,6 +213,8 @@ class _QuoteDetailPagerScreenState
                 );
 
                 // Add a subtle, natural motion to page flicking.
+                // Opacity 위젯 제거 (saveLayer 강제 호출 → GPU 매 프레임 재합성)
+                // scale + translateY를 단일 Transform 행렬로 통합
                 return AnimatedBuilder(
                   animation: _controller,
                   child: child,
@@ -206,17 +228,13 @@ class _QuoteDetailPagerScreenState
                     final focus = Curves.easeOutCubic.transform(1 - delta);
 
                     final scale = 0.965 + (0.035 * focus);
-                    final translateY = 18 * (1 - focus);
-                    final opacity = 0.90 + (0.10 * focus);
+                    final translateY = 18.0 * (1 - focus);
 
-                    return Opacity(
-                      opacity: opacity,
-                      child: Transform.translate(
-                        offset: Offset(0, translateY),
-                        child: Transform.scale(
-                          scale: scale,
-                          child: child,
-                        ),
+                    return Transform.translate(
+                      offset: Offset(0, translateY),
+                      child: Transform.scale(
+                        scale: scale,
+                        child: child,
                       ),
                     );
                   },
@@ -224,300 +242,336 @@ class _QuoteDetailPagerScreenState
               },
             ),
 
-            // Fixed top controls (pinned)
+            // Fixed top controls (닫기·신고 등 버튼 + 광고 예고를 같은 Row 레벨에 중앙 배치)
+            // Positioned가 Stack의 직접 자식이어야 하므로, RepaintBoundary는 Positioned 안에 위치
             Positioned(
               top: 0,
               left: 0,
               right: 0,
-              child: SafeArea(
-                bottom: false,
-                child: SizedBox(
-                  height: 56,
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 12),
-                      _TopPillButton(
-                        label: '닫기',
-                        onPressed: () => Navigator.pop(context),
-                        backgroundColor: pillBgColor,
-                        textColor: pillIconColor,
-                      ),
-                      const Spacer(),
-                      if (!isOwner && quote.type == QuoteType.malmoi)
-                        _TopPillButton(
-                          label: '신고',
-                          backgroundColor: pillBgColor,
-                          textColor: pillIconColor,
-                          onPressed: () async {
-                            if (!isLoggedIn) {
-                              context.push('/login');
-                              return;
-                            }
+              child: RepaintBoundary(
+                child: SafeArea(
+                  bottom: false,
+                  child: SizedBox(
+                    height: 56,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        // 버튼 Row
+                        Row(
+                          children: [
+                            const SizedBox(width: 12),
+                            _TopPillButton(
+                              label: '닫기',
+                              onPressed: () => Navigator.pop(context),
+                              backgroundColor: pillBgColor,
+                              textColor: pillIconColor,
+                            ),
+                            const Spacer(),
+                            if (!isOwner && quote.type == QuoteType.malmoi)
+                              _TopPillButton(
+                                label: '신고',
+                                backgroundColor: pillBgColor,
+                                textColor: pillIconColor,
+                                onPressed: () async {
+                                  if (!isLoggedIn) {
+                                    context.push('/login');
+                                    return;
+                                  }
 
-                            final messenger = ScaffoldMessenger.of(context);
-                            final reasonCode = await _pickReportReason(context);
-                            if (reasonCode == null) return;
-                            if (!context.mounted) return;
+                                  final messenger =
+                                      ScaffoldMessenger.of(context);
+                                  final reasonCode =
+                                      await _pickReportReason(context);
+                                  if (reasonCode == null) return;
+                                  if (!context.mounted) return;
 
-                            try {
-                              final alreadyReported = await ref
-                                  .read(_interactionsRepoProvider)
-                                  .reportMalmoiOnce(
-                                    quoteId: quote.id,
-                                    reasonCode: reasonCode,
-                                  );
-                              if (!context.mounted) return;
-                              messenger.showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    alreadyReported
-                                        ? '이미 신고한 글입니다.'
-                                        : '신고가 접수되었습니다.',
-                                  ),
-                                ),
-                              );
-                            } catch (e) {
-                              if (!context.mounted) return;
-                              messenger.showSnackBar(
-                                SnackBar(content: Text('신고 실패: $e')),
-                              );
-                            }
-                          },
-                        ),
-                      if (!isOwner && quote.type == QuoteType.malmoi)
-                        const SizedBox(width: 8),
-                      if (showReactions)
-                        _TopReactionButton(
-                          quote: quote,
-                          myReaction: myReaction,
-                          backgroundColor: pillBgColor,
-                          textColor: pillIconColor,
-                          onReact: (reaction, assetPath) async {
-                            if (!isLoggedIn) {
-                              context.push('/login');
-                              return;
-                            }
-
-                            if (myReaction != null) {
-                              if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('이미 공감을 남겼어요.'),
-                                ),
-                              );
-                              return;
-                            }
-
-                            _showReactionAnimation(assetPath);
-
-                            // Optimistic UI update
-                            final key = reactionTypeToFirestore(reaction);
-                            final prevCount = quote.reactionCounts[key] ?? 0;
-                            setState(() {
-                              _quotes[_index] = quote.copyWith(
-                                reactionCounts: {
-                                  ...quote.reactionCounts,
-                                  key: prevCount + 1,
+                                  try {
+                                    final alreadyReported = await ref
+                                        .read(interactionsRepositoryProvider)
+                                        .reportMalmoiOnce(
+                                          quoteId: quote.id,
+                                          reasonCode: reasonCode,
+                                        );
+                                    if (!context.mounted) return;
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          alreadyReported
+                                              ? '이미 신고한 글입니다.'
+                                              : '신고가 접수되었습니다.',
+                                        ),
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    messenger.showSnackBar(
+                                      SnackBar(content: Text('신고 실패: $e')),
+                                    );
+                                  }
                                 },
-                              );
-                            });
+                              ),
+                            if (!isOwner && quote.type == QuoteType.malmoi)
+                              const SizedBox(width: 8),
+                            if (showReactions)
+                              _TopReactionButton(
+                                quote: quote,
+                                myReaction: myReaction,
+                                backgroundColor: pillBgColor,
+                                textColor: pillIconColor,
+                                onReact: (reaction, assetPath) async {
+                                  if (!isLoggedIn) {
+                                    context.push('/login');
+                                    return;
+                                  }
 
-                            final messenger = ScaffoldMessenger.of(context);
-                            try {
-                              final (already, _) = await ref
-                                  .read(reactionsRepositoryProvider)
-                                  .reactToQuoteOnce(
-                                    quoteId: quote.id,
-                                    reactionType: reaction,
-                                  );
-                              if (!context.mounted) return;
-                              if (already) {
-                                // Rollback
-                                setState(() {
-                                  _quotes[_index] = quote.copyWith(
-                                    reactionCounts: {
-                                      ...quote.reactionCounts,
-                                      key: prevCount,
-                                    },
-                                  );
-                                });
-                                messenger.showSnackBar(
-                                  const SnackBar(
-                                    content: Text('이미 공감을 남겼어요.'),
-                                  ),
-                                );
-                              }
-                            } catch (e) {
-                              // Rollback on error
-                              if (context.mounted) {
-                                setState(() {
-                                  _quotes[_index] = quote.copyWith(
-                                    reactionCounts: {
-                                      ...quote.reactionCounts,
-                                      key: prevCount,
-                                    },
-                                  );
-                                });
-                                messenger.showSnackBar(
-                                  SnackBar(content: Text('공감 실패: $e')),
-                                );
-                              }
-                            }
-                          },
-                        ),
-                      if (showReactions) const SizedBox(width: 8),
-                      if (isOwner)
-                        _TopPillButton(
-                          label: '수정',
-                          backgroundColor: pillBgColor,
-                          textColor: pillIconColor,
-                          onPressed: () async {
-                            final messenger = ScaffoldMessenger.of(context);
-                            final updatedContent = await context.push<String>(
-                              '/malmoi/edit',
-                              extra: quote,
-                            );
-                            if (updatedContent == null) return;
-                            if (!context.mounted) return;
-                            setState(() {
-                              _quotes[_index] = _quotes[_index]
-                                  .copyWith(content: updatedContent);
-                            });
-                            messenger.showSnackBar(
-                              const SnackBar(content: Text('수정되었습니다.')),
-                            );
-                          },
-                        ),
-                      if (isOwner)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 8),
-                          child: _TopPillButton(
-                            label: '삭제',
-                            backgroundColor: pillBgColor,
-                            textColor: const Color(0xFFFCA5A5),
-                            onPressed: () async {
-                              final messenger = ScaffoldMessenger.of(context);
-                              final ok = await showDialog<bool>(
-                                context: context,
-                                builder: (context) {
-                                  return AlertDialog(
-                                    title: const Text('삭제할까요?'),
-                                    content: const Text('삭제하면 복구할 수 없습니다.'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, false),
-                                        child: const Text('취소'),
+                                  if (myReaction != null) {
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('이미 공감을 남겼어요.'),
                                       ),
-                                      FilledButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, true),
-                                        child: const Text('삭제'),
-                                      ),
-                                    ],
+                                    );
+                                    return;
+                                  }
+
+                                  _showReactionAnimation(assetPath);
+
+                                  final key = reactionTypeToFirestore(reaction);
+                                  final prevCount =
+                                      quote.reactionCounts[key] ?? 0;
+                                  setState(() {
+                                    _quotes[_index] = quote.copyWith(
+                                      reactionCounts: {
+                                        ...quote.reactionCounts,
+                                        key: prevCount + 1,
+                                      },
+                                    );
+                                  });
+
+                                  final messenger =
+                                      ScaffoldMessenger.of(context);
+                                  try {
+                                    final (already, _) = await ref
+                                        .read(reactionsRepositoryProvider)
+                                        .reactToQuoteOnce(
+                                          quoteId: quote.id,
+                                          reactionType: reaction,
+                                        );
+                                    if (!context.mounted) return;
+                                    if (already) {
+                                      setState(() {
+                                        _quotes[_index] = quote.copyWith(
+                                          reactionCounts: {
+                                            ...quote.reactionCounts,
+                                            key: prevCount,
+                                          },
+                                        );
+                                      });
+                                      messenger.showSnackBar(
+                                        const SnackBar(
+                                          content: Text('이미 공감을 남겼어요.'),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      setState(() {
+                                        _quotes[_index] = quote.copyWith(
+                                          reactionCounts: {
+                                            ...quote.reactionCounts,
+                                            key: prevCount,
+                                          },
+                                        );
+                                      });
+                                      messenger.showSnackBar(
+                                        SnackBar(content: Text('공감 실패: $e')),
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
+                            if (showReactions) const SizedBox(width: 8),
+                            if (isOwner)
+                              _TopPillButton(
+                                label: '수정',
+                                backgroundColor: pillBgColor,
+                                textColor: pillIconColor,
+                                onPressed: () async {
+                                  final messenger =
+                                      ScaffoldMessenger.of(context);
+                                  final updatedContent =
+                                      await context.push<String>(
+                                    '/malmoi/edit',
+                                    extra: quote,
+                                  );
+                                  if (updatedContent == null) return;
+                                  if (!context.mounted) return;
+                                  setState(() {
+                                    _quotes[_index] = _quotes[_index]
+                                        .copyWith(content: updatedContent);
+                                  });
+                                  messenger.showSnackBar(
+                                    const SnackBar(content: Text('수정되었습니다.')),
                                   );
                                 },
-                              );
-                              if (ok != true) return;
-                              try {
-                                await ref
-                                    .read(_quotesRepoProvider)
-                                    .deleteMalmoiPost(quoteId: quote.id);
-                                if (!context.mounted) return;
-                                messenger.showSnackBar(
-                                  const SnackBar(content: Text('삭제되었습니다.')),
+                              ),
+                            if (isOwner)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8),
+                                child: _TopPillButton(
+                                  label: '삭제',
+                                  backgroundColor: pillBgColor,
+                                  textColor: const Color(0xFFFCA5A5),
+                                  onPressed: () async {
+                                    final messenger =
+                                        ScaffoldMessenger.of(context);
+                                    final ok = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) {
+                                        return AlertDialog(
+                                          title: const Text('삭제할까요?'),
+                                          content:
+                                              const Text('삭제하면 복구할 수 없습니다.'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, false),
+                                              child: const Text('취소'),
+                                            ),
+                                            FilledButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, true),
+                                              child: const Text('삭제'),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    );
+                                    if (ok != true) return;
+                                    try {
+                                      await ref
+                                          .read(quotesRepositoryProvider)
+                                          .deleteMalmoiPost(quoteId: quote.id);
+                                      if (!context.mounted) return;
+                                      messenger.showSnackBar(
+                                        const SnackBar(
+                                            content: Text('삭제되었습니다.')),
+                                      );
+                                      Navigator.pop(context);
+                                    } catch (e) {
+                                      if (!context.mounted) return;
+                                      messenger.showSnackBar(
+                                        SnackBar(content: Text('삭제 실패: $e')),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ),
+                            const SizedBox(width: 12),
+                          ],
+                        ),
+
+                        // 광고 예고 — Positioned.fill로 Stack 전체를 채운 뒤 Center
+                        // → IgnorePointer로 버튼 탭은 Row가 처리
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: ValueListenableBuilder<int?>(
+                              valueListenable: navPreAdRemainingListenable,
+                              builder: (context, remainingSlides, _) {
+                                if (remainingSlides == null ||
+                                    remainingSlides <= 0) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Transform.translate(
+                                  offset: const Offset(0, 45),
+                                  child: Center(
+                                    child: _PreAdSlideNotice(
+                                      remainingSlides: remainingSlides,
+                                    ),
+                                  ),
                                 );
-                                Navigator.pop(context);
-                              } catch (e) {
-                                if (!context.mounted) return;
-                                messenger.showSnackBar(
-                                  SnackBar(content: Text('삭제 실패: $e')),
-                                );
-                              }
-                            },
+                              },
+                            ),
                           ),
                         ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ),
-
-            Positioned(
-              top: 0,
-              right: 12,
-              child: SafeArea(
-                bottom: false,
-                child: ValueListenableBuilder<int?>(
-                  valueListenable: navPreAdRemainingListenable,
-                  builder: (context, remainingSlides, _) {
-                    if (remainingSlides == null || remainingSlides <= 0) {
-                      return const SizedBox.shrink();
-                    }
-
-                    return IgnorePointer(
-                      child: _PreAdSlideNotice(
-                        remainingSlides: remainingSlides,
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
+              ), // RepaintBoundary
+            ), // Positioned
 
             // Fixed bottom action bar (pinned)
+            // Positioned가 Stack의 직접 자식이어야 하므로, RepaintBoundary는 Positioned 안에 위치
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
-              child: SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AnimatedOpacity(
-                      opacity: _actionsVisible ? 1 : 0,
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOutCubic,
-                      child: IgnorePointer(
-                        ignoring: !_actionsVisible,
-                        child: QuoteDetailActionBar(
-                          isLiked: isLiked,
-                          isSaved: isSaved,
-                          likeCount: quote.likeCount,
-                          shareCount: quote.shareCount,
-                          isLightMode: !hasImage,
-                          onLike: () async {
-                            if (!isLoggedIn) {
-                              context.push('/login');
-                              return;
-                            }
+              child: RepaintBoundary(
+                child: SafeArea(
+                  top: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedOpacity(
+                        opacity: _actionsVisible ? 1 : 0,
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        child: IgnorePointer(
+                          ignoring: !_actionsVisible,
+                          child: QuoteDetailActionBar(
+                            isLiked: isLiked,
+                            isSaved: isSaved,
+                            likeCount: quote.likeCount,
+                            shareCount: quote.shareCount,
+                            isLightMode: !hasImage,
+                            onLike: () async {
+                              if (!isLoggedIn) {
+                                context.push('/login');
+                                return;
+                              }
 
-                            if (isLiked) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('이미 좋아요한 글입니다.'),
-                                ),
-                              );
-                              return;
-                            }
+                              if (isLiked) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('이미 좋아요한 글입니다.'),
+                                  ),
+                                );
+                                return;
+                              }
 
-                            ref
-                                .read(likedQuotesProvider.notifier)
-                                .markLiked(quote.id);
-                            setState(() {
-                              _quotes[_index] = quote.copyWith(
-                                likeCount: quote.likeCount + 1,
-                              );
-                            });
+                              ref
+                                  .read(likedQuotesProvider.notifier)
+                                  .markLiked(quote.id);
+                              setState(() {
+                                _quotes[_index] = quote.copyWith(
+                                  likeCount: quote.likeCount + 1,
+                                );
+                              });
 
-                            final messenger = ScaffoldMessenger.of(context);
-                            try {
-                              final alreadyLiked = await ref
-                                  .read(_interactionsRepoProvider)
-                                  .likeQuoteOnce(quoteId: quote.id);
-                              if (!context.mounted) return;
-                              if (alreadyLiked) {
+                              final messenger = ScaffoldMessenger.of(context);
+                              try {
+                                final alreadyLiked = await ref
+                                    .read(interactionsRepositoryProvider)
+                                    .likeQuoteOnce(quoteId: quote.id);
+                                if (!context.mounted) return;
+                                if (alreadyLiked) {
+                                  ref
+                                      .read(likedQuotesProvider.notifier)
+                                      .unmarkLiked(quote.id);
+                                  setState(() {
+                                    _quotes[_index] = quote.copyWith(
+                                      likeCount: quote.likeCount - 1,
+                                    );
+                                  });
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text('이미 좋아요한 글입니다.'),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (!context.mounted) return;
                                 ref
                                     .read(likedQuotesProvider.notifier)
                                     .unmarkLiked(quote.id);
@@ -527,109 +581,94 @@ class _QuoteDetailPagerScreenState
                                   );
                                 });
                                 messenger.showSnackBar(
-                                  const SnackBar(
-                                    content: Text('이미 좋아요한 글입니다.'),
+                                  SnackBar(content: Text('좋아요 실패: $e')),
+                                );
+                              }
+                            },
+                            onSave: () async {
+                              if (!isLoggedIn) {
+                                context.push('/login');
+                                return;
+                              }
+
+                              // Optimistic UI update
+                              final notifier = ref
+                                  .read(savedQuotesNotifierProvider.notifier);
+                              final wasSaved = isSaved;
+                              if (wasSaved) {
+                                notifier.unmarkSaved(quote.id);
+                              } else {
+                                notifier.markSaved(quote.id);
+                              }
+
+                              final messenger = ScaffoldMessenger.of(context);
+                              try {
+                                final saved = await ref
+                                    .read(savedQuotesControllerProvider)
+                                    .toggleSave(quote);
+                                if (!context.mounted) return;
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(saved ? '담았습니다' : '담기 취소'),
                                   ),
                                 );
+                              } catch (e) {
+                                if (!context.mounted) return;
+                                // Rollback on error
+                                if (wasSaved) {
+                                  notifier.markSaved(quote.id);
+                                } else {
+                                  notifier.unmarkSaved(quote.id);
+                                }
+                                messenger.showSnackBar(
+                                  SnackBar(content: Text('담기 실패: $e')),
+                                );
                               }
-                            } catch (e) {
+                            },
+                            onShare: () async {
+                              if (!isLoggedIn) {
+                                context.push('/login');
+                                return;
+                              }
+                              final author =
+                                  (quote.authorName ?? quote.author).trim();
+
+                              final shared = await showShareSheet(
+                                context: context,
+                                content: quote.content,
+                                author: author,
+                                likeCount: quote.likeCount,
+                                shareCount: quote.shareCount,
+                              );
+
+                              if (!shared) return;
                               if (!context.mounted) return;
-                              ref
-                                  .read(likedQuotesProvider.notifier)
-                                  .unmarkLiked(quote.id);
+
+                              // Optimistic UI update after share
                               setState(() {
                                 _quotes[_index] = quote.copyWith(
-                                  likeCount: quote.likeCount - 1,
+                                  shareCount: quote.shareCount + 1,
                                 );
                               });
-                              messenger.showSnackBar(
-                                SnackBar(content: Text('좋아요 실패: $e')),
-                              );
-                            }
-                          },
-                          onSave: () async {
-                            if (!isLoggedIn) {
-                              context.push('/login');
-                              return;
-                            }
 
-                            // Optimistic UI update
-                            final notifier =
-                                ref.read(savedQuotesNotifierProvider.notifier);
-                            final wasSaved = isSaved;
-                            if (wasSaved) {
-                              notifier.unmarkSaved(quote.id);
-                            } else {
-                              notifier.markSaved(quote.id);
-                            }
+                              await ref
+                                  .read(interactionsRepositoryProvider)
+                                  .incrementShareCount(quoteId: quote.id);
 
-                            final messenger = ScaffoldMessenger.of(context);
-                            try {
-                              final saved = await ref
-                                  .read(savedQuotesControllerProvider)
-                                  .toggleSave(quote);
-                              if (!context.mounted) return;
-                              messenger.showSnackBar(
-                                SnackBar(
-                                  content: Text(saved ? '담았습니다' : '담기 취소'),
-                                ),
-                              );
-                            } catch (e) {
-                              if (!context.mounted) return;
-                              // Rollback on error
-                              if (wasSaved) {
-                                notifier.markSaved(quote.id);
-                              } else {
-                                notifier.unmarkSaved(quote.id);
-                              }
-                              messenger.showSnackBar(
-                                SnackBar(content: Text('담기 실패: $e')),
-                              );
-                            }
-                          },
-                          onShare: () async {
-                            if (!isLoggedIn) {
-                              context.push('/login');
-                              return;
-                            }
-                            final author =
-                                (quote.authorName ?? quote.author).trim();
-
-                            final shared = await showShareSheet(
-                              context: context,
-                              content: quote.content,
-                              author: author,
-                              likeCount: quote.likeCount,
-                              shareCount: quote.shareCount,
-                            );
-
-                            if (!shared) return;
-                            if (!context.mounted) return;
-
-                            // Optimistic UI update after share
-                            setState(() {
-                              _quotes[_index] = quote.copyWith(
-                                shareCount: quote.shareCount + 1,
-                              );
-                            });
-
-                            await ref
-                                .read(_interactionsRepoProvider)
-                                .incrementShareCount(quoteId: quote.id);
-
-                            // 공유 후 광고 트리거
-                            await ref
-                                .read(adsControllerProvider)
-                                .onShareCompleted(context);
-                          },
+                              // 공유 후 광고 트리거
+                              await ref
+                                  .read(adsControllerProvider)
+                                  .onShareCompleted(context);
+                            },
+                          ),
                         ),
                       ),
-                    ),
-                    const BottomBannerAd(),
-                  ],
+                      const BottomBannerAd(),
+                    ],
+                  ),
                 ),
-              ),
-            ),
+              ), // RepaintBoundary
+            ), // Positioned
           ],
         ),
       ),
@@ -695,10 +734,8 @@ class _PreAdSlideNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(top: 8),
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      alignment: Alignment.center,
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: const Color(0x6B000000),
         borderRadius: BorderRadius.circular(999),
@@ -711,14 +748,14 @@ class _PreAdSlideNotice extends StatelessWidget {
             '광고가 나옵니다.',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Container(
-            width: 22,
-            height: 22,
+            width: 18,
+            height: 18,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: const Color(0x33FFFFFF),
@@ -729,7 +766,7 @@ class _PreAdSlideNotice extends StatelessWidget {
               '$remainingSlides',
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w800,
                 height: 1,
               ),
@@ -882,6 +919,11 @@ class _ReactionBubbleItem extends StatelessWidget {
                 asset,
                 width: 24,
                 height: 24,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.emoji_emotions_outlined,
+                  size: 24,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(

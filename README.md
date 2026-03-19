@@ -178,6 +178,23 @@ Build debug APKs:
 - Default debug APK: `flutter build apk --debug --flavor prod`
 - All changes are tested and deployed directly to production environment
 
+## Release Artifact Management (Required)
+
+Play Store 재등록/업데이트 산출물은 아래 폴더 규칙으로 관리한다.
+
+- 경로 규칙: `release/<version>/`
+  - 예시: `release/1.0.0+5/`
+- 각 버전 폴더에 반드시 포함:
+  - 업데이트 등록 문서(`play_store_update_submission_ko.md`)
+  - Android AAB(`app-prod-release.aab`)
+- 릴리즈 노트 원본 템플릿은 `release_notes/`에 유지하고, 실제 제출본은 해당 버전 폴더로 복사해 보관한다.
+
+권장 절차:
+1. `pubspec.yaml` 버전 업데이트
+2. `flutter build appbundle --flavor prod`
+3. `release/<version>/` 생성
+4. 업데이트 문서 + AAB를 같은 폴더에 저장
+
 ## UI / Dev Separation (MUST)
 
 UI(디자인)와 개발 로직은 반드시 분리한다.
@@ -243,6 +260,15 @@ Key identifiers:
 Kakao:
 - Kakao redirect scheme currently lives in `android/app/src/main/AndroidManifest.xml`.
 - If you rotate Kakao keys or change package name, confirm redirect scheme and Kakao console settings.
+
+Kakao share troubleshooting (`code: -401`, `android keyhash mismatched`):
+- Register ALL Android key hashes in Kakao Developers Console > My App > Platform > Android.
+- Required hashes usually include: local debug key hash, local release key hash, and Google Play App Signing key hash (for store-distributed builds).
+- If Play App Signing is enabled, the hash from your local keystore alone is not enough.
+- The app now exposes runtime signing key hashes via Android platform channel (`getAndroidKeyHashes`) and shows fallback guidance when Kakao share fails with keyhash mismatch.
+- Key hash format for Kakao is SHA-1 digest in Base64.
+- Before each Android release, run `./scripts/print_kakao_keyhashes.sh` and follow `docs/kakao_share_keyhash_runbook.md`.
+- For every Android rollout, validate Kakao share on a Play-distributed internal-track build (not only local debug/release builds).
 
 ## Getting Started
 
